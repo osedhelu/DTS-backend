@@ -11,3 +11,15 @@ class InvalidProductPriceError(DomainValidationError):
 
 class InsufficientStockError(DomainValidationError):
     pass
+
+
+class ProductNotFoundError(DomainValidationError):
+    pass
+
+
+class CategoryNotFoundError(DomainValidationError):
+    pass
+
+
+class InvalidCategoryHierarchyError(DomainValidationError):
+    pass

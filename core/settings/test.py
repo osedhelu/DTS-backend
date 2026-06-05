@@ -11,6 +11,7 @@ GIS_DEPENDENT_APPS = frozenset(
     {
         "django.contrib.gis",
         "features.stores",
+        "features.products",
         "features.delivery",
     }
 )
