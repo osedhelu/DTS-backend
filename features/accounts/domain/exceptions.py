@@ -11,3 +11,7 @@ class InvalidEmailError(DomainValidationError):
 
 class InvalidPhoneError(DomainValidationError):
     pass
+
+
+class DuplicateEmailError(DomainValidationError):
+    pass
