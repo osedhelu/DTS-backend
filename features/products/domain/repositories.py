@@ -1,6 +1,6 @@
 from typing import Any, Protocol
 
-from features.products.domain.entities import Category, Product
+from features.products.domain.entities import Category, Product, ProductType
 
 
 class ProductRepository(Protocol):
@@ -10,8 +10,20 @@ class ProductRepository(Protocol):
 
     def deactivate(self, product_id: int) -> Product: ...
 
+    def list_by_store(
+        self,
+        store_id: int,
+        *,
+        product_type: ProductType | None = None,
+        category_id: int | None = None,
+        subcategory_id: int | None = None,
+        active_only: bool = True,
+    ) -> list[Product]: ...
+
 
 class CategoryRepository(Protocol):
     def create(self, data: dict[str, Any]) -> Category: ...
 
     def get_by_id(self, category_id: int) -> Category | None: ...
+
+    def list_tree_by_store(self, store_id: int) -> list[dict[str, Any]]: ...

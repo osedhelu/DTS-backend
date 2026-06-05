@@ -1,0 +1,237 @@
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from features.accounts.infrastructure.permissions import IsMerchant
+from features.products.application.dto import (
+    CreateCategoryDTO,
+    CreateProductDTO,
+    CreateServiceDTO,
+    CreateSubcategoryDTO,
+    DeactivateProductDTO,
+)
+from features.products.domain.entities import ProductType
+from features.products.domain.exceptions import (
+    CategoryNotFoundError,
+    DomainValidationError,
+    InvalidCategoryHierarchyError,
+    ProductNotFoundError,
+)
+from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
+
+
+class StoreProductListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsMerchant()]
+        return [AllowAny()]
+
+    def get(self, request, store_id: int):
+        from features.products.infrastructure.repositories import DjangoProductRepository
+        from features.products.infrastructure.serializers import ProductSerializer
+
+        product_type = request.query_params.get("type")
+        category_id = request.query_params.get("category")
+        subcategory_id = request.query_params.get("subcategory")
+
+        parsed_type = ProductType(product_type) if product_type else None
+        parsed_category = int(category_id) if category_id else None
+        parsed_subcategory = int(subcategory_id) if subcategory_id else None
+
+        repository = DjangoProductRepository()
+        products = repository.list_by_store(
+            store_id,
+            product_type=parsed_type,
+            category_id=parsed_category,
+            subcategory_id=parsed_subcategory,
+        )
+        return Response(ProductSerializer(products, many=True).data)
+
+    def post(self, request, store_id: int):
+        from features.products.application.use_cases.manage_product import (
+            CreateProductUseCase,
+            CreateServiceUseCase,
+        )
+        from features.products.infrastructure.repositories import (
+            DjangoCategoryRepository,
+            DjangoProductRepository,
+        )
+        from features.products.infrastructure.serializers import (
+            CreateProductSerializer,
+            CreateServiceSerializer,
+            ProductSerializer,
+        )
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        item_type = request.data.get("product_type", ProductType.PHYSICAL.value)
+        product_repository = DjangoProductRepository()
+        category_repository = DjangoCategoryRepository()
+        store_repository = DjangoStoreRepository()
+
+        try:
+            if item_type == ProductType.SERVICE.value:
+                serializer = CreateServiceSerializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                data = serializer.validated_data
+                product = CreateServiceUseCase(
+                    product_repository,
+                    category_repository,
+                    store_repository,
+                ).execute(
+                    CreateServiceDTO(
+                        store_id=store_id,
+                        owner_id=request.user.id,
+                        name=data["name"],
+                        price=data["price"],
+                        category_id=data.get("category_id"),
+                        subcategory_id=data.get("subcategory_id"),
+                        description=data.get("description", ""),
+                        duration_minutes=data.get("duration_minutes"),
+                    )
+                )
+            else:
+                serializer = CreateProductSerializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                data = serializer.validated_data
+                product = CreateProductUseCase(
+                    product_repository,
+                    category_repository,
+                    store_repository,
+                ).execute(
+                    CreateProductDTO(
+                        store_id=store_id,
+                        owner_id=request.user.id,
+                        name=data["name"],
+                        price=data["price"],
+                        stock=data.get("stock", 0),
+                        category_id=data.get("category_id"),
+                        subcategory_id=data.get("subcategory_id"),
+                        description=data.get("description", ""),
+                    )
+                )
+        except StoreNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except NotStoreOwnerError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except (CategoryNotFoundError, InvalidCategoryHierarchyError, DomainValidationError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
+
+
+class StoreProductDetailView(APIView):
+    permission_classes = [IsMerchant]
+
+    def patch(self, request, store_id: int, product_id: int):
+        from features.products.application.use_cases.manage_product import DeactivateProductUseCase
+        from features.products.infrastructure.repositories import DjangoProductRepository
+        from features.products.infrastructure.serializers import ProductSerializer
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        if request.data.get("is_active") is not False:
+            return Response(
+                {"detail": "Solo se permite desactivar con is_active=false"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        use_case = DeactivateProductUseCase(
+            DjangoProductRepository(),
+            DjangoStoreRepository(),
+        )
+        try:
+            product = use_case.execute(
+                DeactivateProductDTO(product_id=product_id, owner_id=request.user.id)
+            )
+        except ProductNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except StoreNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except NotStoreOwnerError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+
+        if product.store_id != store_id:
+            return Response(
+                {"detail": "El producto no pertenece a este comercio"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(ProductSerializer(product).data)
+
+
+class StoreCategoryListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsMerchant()]
+        return [AllowAny()]
+
+    def get(self, request, store_id: int):
+        from features.products.infrastructure.repositories import DjangoCategoryRepository
+        from features.products.infrastructure.serializers import CategoryTreeSerializer
+
+        repository = DjangoCategoryRepository()
+        tree = repository.list_tree_by_store(store_id)
+        return Response(CategoryTreeSerializer(tree, many=True).data)
+
+    def post(self, request, store_id: int):
+        from features.products.application.use_cases.manage_category import (
+            CreateCategoryUseCase,
+            CreateSubcategoryUseCase,
+        )
+        from features.products.infrastructure.repositories import DjangoCategoryRepository
+        from features.products.infrastructure.serializers import (
+            CreateCategorySerializer,
+            CreateSubcategorySerializer,
+        )
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        category_repository = DjangoCategoryRepository()
+        store_repository = DjangoStoreRepository()
+
+        try:
+            parent_id = request.data.get("parent_id")
+            if parent_id is not None:
+                serializer = CreateSubcategorySerializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                data = serializer.validated_data
+                category = CreateSubcategoryUseCase(
+                    category_repository,
+                    store_repository,
+                ).execute(
+                    CreateSubcategoryDTO(
+                        store_id=store_id,
+                        owner_id=request.user.id,
+                        parent_id=data["parent_id"],
+                        name=data["name"],
+                    )
+                )
+            else:
+                serializer = CreateCategorySerializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                data = serializer.validated_data
+                category = CreateCategoryUseCase(
+                    category_repository,
+                    store_repository,
+                ).execute(
+                    CreateCategoryDTO(
+                        store_id=store_id,
+                        owner_id=request.user.id,
+                        name=data["name"],
+                    )
+                )
+        except StoreNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except NotStoreOwnerError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except (CategoryNotFoundError, InvalidCategoryHierarchyError, DomainValidationError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "id": category.id,
+                "name": category.name,
+                "store_id": category.store_id,
+                "parent_id": category.parent_id,
+            },
+            status=status.HTTP_201_CREATED,
+        )
