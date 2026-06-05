@@ -40,7 +40,7 @@ DATABASES = build_databases(env, BASE_DIR)
 
 REDIS_URL = build_redis_url(env)
 
-# T1.2.3: AUTH_USER_MODEL = "accounts.CustomUser"
+AUTH_USER_MODEL = "accounts.CustomUser"
 
 LANGUAGE_CODE = "es-co"
 TIME_ZONE = "America/Bogota"
