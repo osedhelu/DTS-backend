@@ -66,3 +66,19 @@ def enqueue_notify_customer_on_the_way(
     from features.notifications.infrastructure.tasks import notify_customer_task
 
     notify_customer_task.delay(order_id)
+
+
+@receiver(order_status_changed)
+def enqueue_push_on_order_accepted(
+    sender,
+    order_id: int,
+    previous_status: str,
+    current_status: str,
+    **kwargs,
+) -> None:
+    if current_status != OrderStatus.ACCEPTED_BY_MERCHANT:
+        return
+
+    from features.notifications.infrastructure.tasks import send_push_task
+
+    send_push_task.delay(order_id, OrderStatus.ACCEPTED_BY_MERCHANT)
