@@ -27,3 +27,7 @@ class UnauthorizedTrackingAccessError(DomainValidationError):
 
 class NoDriverAvailableError(DomainValidationError):
     pass
+
+
+class InvalidOrderForDriverAssignmentError(DomainValidationError):
+    pass

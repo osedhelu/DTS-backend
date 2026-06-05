@@ -1,4 +1,6 @@
+from features.accounts.infrastructure.models import DriverProfile
 from features.delivery.domain.entities import DeliveryTracking, TrackingPoint
+from features.delivery.domain.services import OnlineDriver
 from features.delivery.infrastructure.models import DeliveryTracking as DeliveryTrackingModel
 from features.delivery.infrastructure.models import TrackingPoint as TrackingPointModel
 from features.stores.domain.value_objects import GeoLocation
@@ -56,3 +58,22 @@ class DjangoDeliveryTrackingRepository:
 
         model = DeliveryTrackingModel.objects.prefetch_related("points").get(pk=model.pk)
         return _tracking_to_entity(model)
+
+
+class DjangoDriverAvailabilityRepository:
+    def list_online_drivers(self) -> list[OnlineDriver]:
+        profiles = DriverProfile.objects.filter(
+            is_online=True,
+            last_latitude__isnull=False,
+            last_longitude__isnull=False,
+        )
+        return [
+            OnlineDriver(
+                driver_id=profile.user_id,
+                location=GeoLocation(
+                    latitude=profile.last_latitude,
+                    longitude=profile.last_longitude,
+                ),
+            )
+            for profile in profiles
+        ]

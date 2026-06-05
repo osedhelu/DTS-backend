@@ -85,6 +85,13 @@ class DjangoOrderRepository:
         model = OrderModel.objects.prefetch_related("items").get(pk=order_id)
         return _order_to_entity(model)
 
+    def assign_driver(self, order_id: int, driver_id: int) -> Order:
+        model = OrderModel.objects.get(pk=order_id)
+        model.driver_id = driver_id
+        model.save(update_fields=["driver_id", "updated_at"])
+        model = OrderModel.objects.prefetch_related("items").get(pk=order_id)
+        return _order_to_entity(model)
+
     def list_for_user(
         self,
         user_id: int,

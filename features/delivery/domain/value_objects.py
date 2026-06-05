@@ -7,3 +7,10 @@ TRACKABLE_ORDER_STATUSES: frozenset[OrderStatus] = frozenset(
         OrderStatus.ON_THE_WAY,
     }
 )
+
+ASSIGNABLE_ORDER_STATUSES: frozenset[OrderStatus] = frozenset(
+    {
+        OrderStatus.READY_FOR_PICKUP,
+        OrderStatus.SEARCHING_DRIVER,
+    }
+)

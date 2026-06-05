@@ -12,6 +12,8 @@ class OrderRepository(Protocol):
 
     def update_status(self, order_id: int, status: OrderStatus) -> Order: ...
 
+    def assign_driver(self, order_id: int, driver_id: int) -> Order: ...
+
     def list_for_user(
         self,
         user_id: int,

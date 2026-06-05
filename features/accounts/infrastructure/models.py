@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
 from features.accounts.domain.entities import UserRole
+from features.stores.domain.value_objects import GeoLocation
 
 
 class CustomUserManager(BaseUserManager):
@@ -109,6 +110,8 @@ class DriverProfile(models.Model):
     license_number = models.CharField(max_length=50, blank=True)
     vehicle_type = models.CharField(max_length=50, blank=True)
     is_online = models.BooleanField(default=False)
+    last_latitude = models.FloatField(null=True, blank=True)
+    last_longitude = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -119,6 +122,14 @@ class DriverProfile(models.Model):
 
     def __str__(self) -> str:
         return f"Conductor {self.user.username}"
+
+    def set_last_location(self, geo: GeoLocation) -> None:
+        self.last_latitude = geo.latitude
+        self.last_longitude = geo.longitude
+
+    @property
+    def has_last_location(self) -> bool:
+        return self.last_latitude is not None and self.last_longitude is not None
 
 
 class CustomerProfile(models.Model):
