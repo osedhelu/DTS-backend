@@ -31,25 +31,20 @@ def notify_customer_task(self, order_id: int) -> str:
     return f"pending:{order_id}"
 
 
-@shared_task(
-    bind=True,
-    max_retries=3,
-    name="features.notifications.infrastructure.tasks.send_push_task",
-)
-def send_push_task(self, order_id: int, notification_type: str) -> str:
+def execute_order_push(order_id: int, order_status: str) -> str:
     order_repository = DjangoOrderRepository()
     order = order_repository.get_by_id(order_id)
     if order is None:
         raise OrderNotFoundError(f"Pedido {order_id} no encontrado")
 
-    order_status = OrderStatus(notification_type)
-    if not OrderStatusNotificationMapper.supports_status(order_status):
+    status = OrderStatus(order_status)
+    if not OrderStatusNotificationMapper.supports_status(status):
         return f"skipped:{order_id}:unsupported_status"
 
     use_case = _build_send_push_use_case()
     user_ids = resolve_recipient_user_ids(
         order,
-        order_status,
+        status,
         DjangoDriverAvailabilityRepository(),
     )
 
@@ -60,12 +55,30 @@ def send_push_task(self, order_id: int, notification_type: str) -> str:
                 SendPushDTO(
                     user_id=user_id,
                     order_id=order_id,
-                    order_status=order_status,
+                    order_status=status,
                 )
             )
         )
 
     return f"sent:{order_id}:{len(message_ids)}"
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    name="features.notifications.infrastructure.tasks.send_push_task",
+)
+def send_push_task(self, order_id: int, notification_type: str) -> str:
+    return execute_order_push(order_id, notification_type)
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    name="features.notifications.infrastructure.tasks.dispatch_order_push_task",
+)
+def dispatch_order_push_task(self, order_id: int, order_status: str) -> str:
+    return execute_order_push(order_id, order_status)
 
 
 @shared_task(

@@ -234,8 +234,8 @@ def test_signal_enqueues_notification(mock_delay):
     reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
 )
 @pytest.mark.django_db
-@patch("features.notifications.infrastructure.tasks.send_push_task.delay")
-def test_signal_push_order_accepted(mock_delay):
+@patch("features.notifications.infrastructure.tasks.dispatch_order_push_task.delay")
+def test_any_status_change_dispatches_push(mock_delay):
     with override_settings(
         DATABASES=POSTGIS_DATABASE,
         INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
@@ -245,25 +245,25 @@ def test_signal_push_order_accepted(mock_delay):
         from features.stores.infrastructure.models import Store
 
         merchant = CustomUser.objects.create_user(
-            username="merchant_push_signal",
-            email="merchant_push_signal@test.com",
+            username="merchant_dispatch_push",
+            email="merchant_dispatch_push@test.com",
             password="securepass123",
             role=UserRole.MERCHANT,
         )
         customer = CustomUser.objects.create_user(
-            username="customer_push_signal",
-            email="customer_push_signal@test.com",
+            username="customer_dispatch_push",
+            email="customer_dispatch_push@test.com",
             password="securepass123",
             role=UserRole.CUSTOMER,
         )
 
-        store = Store(owner=merchant, name="Push Signal Store", status=StoreStatus.OPEN)
+        store = Store(owner=merchant, name="Dispatch Push Store", status=StoreStatus.OPEN)
         store.set_location(GeoLocation(latitude=4.7110, longitude=-74.0721))
         store.save()
 
         product = Product.objects.create(
             store=store,
-            name="Push Signal Product",
+            name="Dispatch Push Product",
             price=Decimal("10000.00"),
             stock=10,
             product_type=ProductType.PHYSICAL,
@@ -278,13 +278,21 @@ def test_signal_push_order_accepted(mock_delay):
 
         order.status = OrderStatus.ACCEPTED_BY_MERCHANT
         order.save(update_fields=["status", "updated_at"])
-
         mock_delay.assert_called_once_with(order.id, OrderStatus.ACCEPTED_BY_MERCHANT)
 
         mock_delay.reset_mock()
         order.status = OrderStatus.IN_PREPARATION
         order.save(update_fields=["status", "updated_at"])
+        mock_delay.assert_called_once_with(order.id, OrderStatus.IN_PREPARATION)
 
+        mock_delay.reset_mock()
+        order.status = OrderStatus.ON_THE_WAY
+        order.save(update_fields=["status", "updated_at"])
+        mock_delay.assert_called_once_with(order.id, OrderStatus.ON_THE_WAY)
+
+        mock_delay.reset_mock()
+        order.status = OrderStatus.SEARCHING_DRIVER
+        order.save(update_fields=["status", "updated_at"])
         mock_delay.assert_not_called()
 
 
@@ -293,7 +301,7 @@ def test_signal_push_order_accepted(mock_delay):
     reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
 )
 @pytest.mark.django_db
-@patch("features.notifications.infrastructure.tasks.notify_drivers_new_order_task.delay")
+@patch("features.notifications.infrastructure.tasks.dispatch_order_push_task.delay")
 def test_signal_push_new_order_to_drivers(mock_delay):
     with override_settings(
         DATABASES=POSTGIS_DATABASE,
@@ -338,7 +346,7 @@ def test_signal_push_new_order_to_drivers(mock_delay):
         order.status = OrderStatus.READY_FOR_PICKUP
         order.save(update_fields=["status", "updated_at"])
 
-        mock_delay.assert_called_once_with(order.id)
+        mock_delay.assert_called_once_with(order.id, OrderStatus.READY_FOR_PICKUP)
 
         mock_delay.reset_mock()
         order.status = OrderStatus.SEARCHING_DRIVER
