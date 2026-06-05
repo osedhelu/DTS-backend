@@ -75,3 +75,67 @@ class CustomUser(AbstractUser):
     @property
     def is_super_admin(self) -> bool:
         return self.role == UserRole.SUPER_ADMIN
+
+
+class MerchantProfile(models.Model):
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="merchant_profile",
+    )
+    business_name = models.CharField(max_length=255)
+    tax_id = models.CharField(max_length=50, blank=True)
+    phone = models.CharField(max_length=20)
+    address = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "accounts_merchant_profile"
+        verbose_name = "perfil comercio"
+        verbose_name_plural = "perfiles comercio"
+
+    def __str__(self) -> str:
+        return self.business_name
+
+
+class DriverProfile(models.Model):
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="driver_profile",
+    )
+    phone = models.CharField(max_length=20)
+    license_number = models.CharField(max_length=50, blank=True)
+    vehicle_type = models.CharField(max_length=50, blank=True)
+    is_online = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "accounts_driver_profile"
+        verbose_name = "perfil conductor"
+        verbose_name_plural = "perfiles conductor"
+
+    def __str__(self) -> str:
+        return f"Conductor {self.user.username}"
+
+
+class CustomerProfile(models.Model):
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="customer_profile",
+    )
+    phone = models.CharField(max_length=20)
+    default_address = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "accounts_customer_profile"
+        verbose_name = "perfil cliente"
+        verbose_name_plural = "perfiles cliente"
+
+    def __str__(self) -> str:
+        return f"Cliente {self.user.username}"
