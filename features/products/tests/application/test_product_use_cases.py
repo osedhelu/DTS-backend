@@ -1,19 +1,24 @@
 from decimal import Decimal
 from unittest.mock import MagicMock
 
+import pytest
+
 from features.products.application.dto import (
     CreateProductDTO,
     CreateServiceDTO,
     CreateSubcategoryDTO,
     DeactivateProductDTO,
+    UpdateProductStockDTO,
 )
 from features.products.application.use_cases.manage_category import CreateSubcategoryUseCase
 from features.products.application.use_cases.manage_product import (
     CreateProductUseCase,
     CreateServiceUseCase,
     DeactivateProductUseCase,
+    UpdateProductStockUseCase,
 )
 from features.products.domain.entities import Category, Product, ProductType
+from features.products.domain.exceptions import DomainValidationError
 from features.stores.domain.entities import Store, StoreStatus
 
 
@@ -106,6 +111,61 @@ def test_create_service():
     assert call_data["duration_minutes"] == 180
     assert call_data["requires_on_site_visit"] is True
     assert result.is_service is True
+
+
+def test_update_product_stock():
+    product_repository = MagicMock()
+    store_repository = MagicMock()
+
+    product_repository.get_by_id.return_value = Product(
+        id=7,
+        name="Hamburguesa",
+        price=Decimal("15990"),
+        store_id=1,
+        stock=10,
+        product_type=ProductType.PHYSICAL,
+    )
+    store_repository.get_by_id.return_value = Store(
+        id=1, name="Restaurante", owner_id=10, status=StoreStatus.OPEN
+    )
+    updated = Product(
+        id=7,
+        name="Hamburguesa",
+        price=Decimal("15990"),
+        store_id=1,
+        stock=25,
+        product_type=ProductType.PHYSICAL,
+    )
+    product_repository.update_stock.return_value = updated
+
+    use_case = UpdateProductStockUseCase(product_repository, store_repository)
+    result = use_case.execute(
+        UpdateProductStockDTO(product_id=7, owner_id=10, stock=25)
+    )
+
+    product_repository.update_stock.assert_called_once_with(7, 25)
+    assert result.stock == 25
+
+
+def test_cannot_update_service_stock():
+    product_repository = MagicMock()
+    store_repository = MagicMock()
+
+    product_repository.get_by_id.return_value = Product(
+        id=8,
+        name="Limpieza",
+        price=Decimal("85000"),
+        store_id=1,
+        product_type=ProductType.SERVICE,
+    )
+    store_repository.get_by_id.return_value = Store(
+        id=1, name="Limpieza Express", owner_id=10, status=StoreStatus.OPEN
+    )
+
+    use_case = UpdateProductStockUseCase(product_repository, store_repository)
+
+    with pytest.raises(DomainValidationError, match="inventario"):
+        use_case.execute(UpdateProductStockDTO(product_id=8, owner_id=10, stock=5))
 
 
 def test_deactivate_product():

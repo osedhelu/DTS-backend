@@ -96,6 +96,12 @@ class DjangoProductRepository:
         model.save(update_fields=["is_active", "updated_at"])
         return _product_to_entity(model)
 
+    def update_stock(self, product_id: int, stock: int) -> Product:
+        model = ProductModel.objects.get(pk=product_id)
+        model.stock = stock
+        model.save(update_fields=["stock", "updated_at"])
+        return _product_to_entity(model)
+
     def list_by_store(
         self,
         store_id: int,

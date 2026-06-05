@@ -2,10 +2,12 @@ from features.products.application.dto import (
     CreateProductDTO,
     CreateServiceDTO,
     DeactivateProductDTO,
+    UpdateProductStockDTO,
 )
 from features.products.domain.entities import Product, ProductType
 from features.products.domain.exceptions import (
     CategoryNotFoundError,
+    DomainValidationError,
     InvalidCategoryHierarchyError,
     ProductNotFoundError,
 )
@@ -154,3 +156,29 @@ class DeactivateProductUseCase:
             raise NotStoreOwnerError("No tienes permiso para modificar este producto")
 
         return self._product_repository.deactivate(dto.product_id)
+
+
+class UpdateProductStockUseCase:
+    def __init__(
+        self,
+        product_repository: ProductRepository,
+        store_repository: StoreRepository,
+    ) -> None:
+        self._product_repository = product_repository
+        self._store_repository = store_repository
+
+    def execute(self, dto: UpdateProductStockDTO) -> Product:
+        product = self._product_repository.get_by_id(dto.product_id)
+        if product is None:
+            raise ProductNotFoundError(f"Producto {dto.product_id} no encontrado")
+
+        if not product.tracks_stock:
+            raise DomainValidationError("Los servicios no gestionan inventario")
+
+        store = self._store_repository.get_by_id(product.store_id)
+        if store is None:
+            raise StoreNotFoundError(f"Comercio {product.store_id} no encontrado")
+        if store.owner_id != dto.owner_id:
+            raise NotStoreOwnerError("No tienes permiso para modificar este producto")
+
+        return self._product_repository.update_stock(dto.product_id, dto.stock)

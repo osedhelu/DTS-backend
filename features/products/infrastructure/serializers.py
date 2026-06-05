@@ -45,6 +45,10 @@ class CreateProductSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True, default="")
 
 
+class UpdateStockSerializer(serializers.Serializer):
+    stock = serializers.IntegerField(min_value=0)
+
+
 class CreateServiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     price = serializers.DecimalField(max_digits=12, decimal_places=2)

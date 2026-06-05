@@ -10,6 +10,8 @@ class ProductRepository(Protocol):
 
     def deactivate(self, product_id: int) -> Product: ...
 
+    def update_stock(self, product_id: int, stock: int) -> Product: ...
+
     def list_by_store(
         self,
         store_id: int,

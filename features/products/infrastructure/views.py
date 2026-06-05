@@ -13,6 +13,7 @@ from features.products.application.dto import (
     CreateServiceDTO,
     CreateSubcategoryDTO,
     DeactivateProductDTO,
+    UpdateProductStockDTO,
 )
 from features.products.domain.entities import ProductType
 from features.products.domain.exceptions import (
@@ -29,6 +30,7 @@ from features.products.infrastructure.serializers import (
     CreateServiceSerializer,
     CreateSubcategorySerializer,
     ProductSerializer,
+    UpdateStockSerializer,
 )
 
 CategoryResponseSerializer = inline_serializer(
@@ -155,8 +157,11 @@ class StoreProductListCreateView(APIView):
 @extend_schema_view(
     patch=extend_schema(
         request=inline_serializer(
-            name="DeactivateProduct",
-            fields={"is_active": serializers.BooleanField()},
+            name="UpdateProduct",
+            fields={
+                "is_active": serializers.BooleanField(required=False),
+                "stock": serializers.IntegerField(required=False, min_value=0),
+            },
         ),
         responses={
             200: ProductSerializer,
@@ -170,31 +175,49 @@ class StoreProductDetailView(APIView):
     permission_classes = [IsMerchant]
 
     def patch(self, request, store_id: int, product_id: int):
-        from features.products.application.use_cases.manage_product import DeactivateProductUseCase
+        from features.products.application.use_cases.manage_product import (
+            DeactivateProductUseCase,
+            UpdateProductStockUseCase,
+        )
         from features.products.infrastructure.repositories import DjangoProductRepository
         from features.products.infrastructure.serializers import ProductSerializer
         from features.stores.infrastructure.repositories import DjangoStoreRepository
 
-        if request.data.get("is_active") is not False:
-            return Response(
-                {"detail": "Solo se permite desactivar con is_active=false"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        product_repository = DjangoProductRepository()
+        store_repository = DjangoStoreRepository()
 
-        use_case = DeactivateProductUseCase(
-            DjangoProductRepository(),
-            DjangoStoreRepository(),
-        )
         try:
-            product = use_case.execute(
-                DeactivateProductDTO(product_id=product_id, owner_id=request.user.id)
-            )
+            if "stock" in request.data:
+                serializer = UpdateStockSerializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                use_case = UpdateProductStockUseCase(product_repository, store_repository)
+                product = use_case.execute(
+                    UpdateProductStockDTO(
+                        product_id=product_id,
+                        owner_id=request.user.id,
+                        stock=serializer.validated_data["stock"],
+                    )
+                )
+            elif request.data.get("is_active") is False:
+                use_case = DeactivateProductUseCase(product_repository, store_repository)
+                product = use_case.execute(
+                    DeactivateProductDTO(product_id=product_id, owner_id=request.user.id)
+                )
+            else:
+                return Response(
+                    {
+                        "detail": "Use stock para inventario o is_active=false para desactivar"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         except ProductNotFoundError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except StoreNotFoundError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except NotStoreOwnerError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except DomainValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         if product.store_id != store_id:
             return Response(

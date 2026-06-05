@@ -33,6 +33,13 @@ class DeactivateProductDTO:
 
 
 @dataclass(frozen=True)
+class UpdateProductStockDTO:
+    product_id: int
+    owner_id: int
+    stock: int
+
+
+@dataclass(frozen=True)
 class CreateCategoryDTO:
     store_id: int
     owner_id: int
