@@ -4,7 +4,8 @@ from features.delivery.domain.services import DriverMatcher
 from features.delivery.domain.value_objects import ASSIGNABLE_ORDER_STATUSES
 from features.orders.domain.exceptions import OrderNotFoundError
 from features.orders.domain.repositories import OrderRepository
-from features.orders.domain.value_objects import OrderType
+from features.orders.domain.services import OrderStateMachine
+from features.orders.domain.value_objects import OrderStatus, OrderType
 from features.stores.domain.repositories import StoreRepository
 from features.stores.domain.value_objects import GeoLocation
 
@@ -26,6 +27,9 @@ class AssignDriverUseCase:
             raise OrderNotFoundError(f"Pedido {order_id} no encontrado")
 
         if order.driver_id is not None:
+            if order.status == OrderStatus.SEARCHING_DRIVER:
+                OrderStateMachine.transition(order.status, OrderStatus.DRIVER_ASSIGNED)
+                self._order_repository.update_status(order_id, OrderStatus.DRIVER_ASSIGNED)
             return order.driver_id
 
         if order.order_type != OrderType.DELIVERY:
@@ -42,9 +46,19 @@ class AssignDriverUseCase:
         if store is None:
             raise OrderNotFoundError(f"Comercio {order.store_id} no encontrado")
 
+        if order.status == OrderStatus.READY_FOR_PICKUP:
+            OrderStateMachine.transition(order.status, OrderStatus.SEARCHING_DRIVER)
+            order = self._order_repository.update_status(
+                order_id, OrderStatus.SEARCHING_DRIVER
+            )
+
         pickup_location = GeoLocation(latitude=store.latitude, longitude=store.longitude)
         online_drivers = self._driver_availability_repository.list_online_drivers()
         nearest = DriverMatcher.find_nearest_driver(pickup_location, online_drivers)
 
-        updated_order = self._order_repository.assign_driver(order_id, nearest.driver_id)
-        return updated_order.driver_id
+        self._order_repository.assign_driver(order_id, nearest.driver_id)
+
+        OrderStateMachine.transition(OrderStatus.SEARCHING_DRIVER, OrderStatus.DRIVER_ASSIGNED)
+        self._order_repository.update_status(order_id, OrderStatus.DRIVER_ASSIGNED)
+
+        return nearest.driver_id

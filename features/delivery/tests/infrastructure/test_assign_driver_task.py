@@ -128,6 +128,69 @@ def test_task_assigns_nearest():
         assert result == f"assigned:{order.id}:{nearest_driver.id}"
         assert order.driver_id == nearest_driver.id
         assert order.driver_id != far_driver.id
+        assert order.status == OrderStatus.DRIVER_ASSIGNED
+
+
+@pytest.mark.skipif(
+    not _geos_available(),
+    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
+)
+@pytest.mark.django_db
+def test_status_after_assignment():
+    with override_settings(
+        DATABASES=POSTGIS_DATABASE,
+        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
+        CELERY_TASK_ALWAYS_EAGER=True,
+        CELERY_TASK_EAGER_PROPAGATES=True,
+    ):
+        from features.delivery.infrastructure.tasks import assign_driver_task
+        from features.orders.infrastructure.models import Order
+        from features.products.infrastructure.models import Product
+        from features.stores.infrastructure.models import Store
+
+        merchant = CustomUser.objects.create_user(
+            username="merchant_status_assign",
+            email="merchant_status_assign@test.com",
+            password="securepass123",
+            role=UserRole.MERCHANT,
+        )
+        customer = CustomUser.objects.create_user(
+            username="customer_status_assign",
+            email="customer_status_assign@test.com",
+            password="securepass123",
+            role=UserRole.CUSTOMER,
+        )
+
+        store = Store(owner=merchant, name="Status Assign Store", status=StoreStatus.OPEN)
+        store.set_location(GeoLocation(latitude=4.7110, longitude=-74.0721))
+        store.save()
+
+        product = Product.objects.create(
+            store=store,
+            name="Status Assign Product",
+            price=Decimal("10000.00"),
+            stock=10,
+            product_type=ProductType.PHYSICAL,
+        )
+
+        driver = _create_driver(
+            "driver_status_assign",
+            "driver_status_assign@test.com",
+            GeoLocation(latitude=4.7120, longitude=-74.0710),
+        )
+
+        order = Order.objects.create(
+            customer=customer,
+            store=store,
+            status=OrderStatus.SEARCHING_DRIVER,
+            total=product.price,
+        )
+
+        assign_driver_task(order.id)
+
+        order.refresh_from_db()
+        assert order.status == OrderStatus.DRIVER_ASSIGNED
+        assert order.driver_id == driver.id
 
 
 @pytest.mark.skipif(
