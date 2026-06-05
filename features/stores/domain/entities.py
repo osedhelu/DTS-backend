@@ -13,6 +13,9 @@ class Store:
     owner_id: int
     id: int | None = None
     status: StoreStatus = StoreStatus.CLOSED
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str = ""
 
     def open(self) -> None:
         self.status = StoreStatus.OPEN
