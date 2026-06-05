@@ -7,3 +7,15 @@ class DomainValidationError(ValueError):
 
 class PushTemplateNotFoundError(DomainValidationError):
     pass
+
+
+class FCMClientError(DomainValidationError):
+    pass
+
+
+class FCMNotConfiguredError(FCMClientError):
+    pass
+
+
+class FCMSendError(FCMClientError):
+    pass
