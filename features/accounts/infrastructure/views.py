@@ -9,6 +9,7 @@ from features.accounts.application.dto import RegisterUserDTO
 from features.accounts.application.use_cases.register_user import RegisterUserUseCase
 from features.accounts.domain.entities import UserRole
 from features.accounts.domain.exceptions import DomainValidationError, DuplicateEmailError
+from features.accounts.infrastructure.permissions import IsSuperAdmin
 from features.accounts.infrastructure.repositories import DjangoUserRepository
 from features.accounts.infrastructure.serializers import RegisterSerializer, UserResponseSerializer
 
@@ -62,3 +63,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainPairSerializer
+
+
+class AdminDashboardView(APIView):
+    """Endpoint protegido solo para Super Admin (usado en tests y portal admin)."""
+
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        return Response({"detail": "Panel super admin", "user": request.user.username})
