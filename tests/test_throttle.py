@@ -26,9 +26,10 @@ THROTTLE_SETTINGS = {
 
 @override_settings(REST_FRAMEWORK=THROTTLE_SETTINGS)
 def test_throttle(api_client):
-    first = api_client.get(reverse("schema"))
-    second = api_client.get(reverse("schema"))
+    # Usamos un endpoint DRF sin dependencia de GDAL para evitar fallos por entorno.
+    first = api_client.post(reverse("accounts-register"), {}, format="json")
+    second = api_client.post(reverse("accounts-register"), {}, format="json")
 
-    assert first.status_code == status.HTTP_200_OK
+    assert first.status_code == status.HTTP_400_BAD_REQUEST
     assert second.status_code == status.HTTP_429_TOO_MANY_REQUESTS
     assert "detail" in second.data
