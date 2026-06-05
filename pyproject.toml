@@ -17,6 +17,7 @@ dependencies = [
     "channels-redis>=4.2",
     "firebase-admin>=7.4.0",
     "gunicorn>=26.0.0",
+    "whitenoise>=6.12.0",
 ]
 
 [dependency-groups]
