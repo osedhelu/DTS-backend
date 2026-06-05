@@ -19,3 +19,13 @@ def notify_customer_task(self, order_id: int) -> str:
 def send_push_task(self, order_id: int, notification_type: str) -> str:
     """Stub — envío push FCM en T2.4.3."""
     return f"pending:{order_id}:{notification_type}"
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    name="features.notifications.infrastructure.tasks.notify_drivers_new_order_task",
+)
+def notify_drivers_new_order_task(self, order_id: int) -> str:
+    """Stub — push a conductores online para pedidos listos para recoger."""
+    return f"pending-drivers:{order_id}"

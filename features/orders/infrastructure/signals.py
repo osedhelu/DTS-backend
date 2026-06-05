@@ -53,6 +53,22 @@ def enqueue_assign_driver_on_ready_for_pickup(
 
 
 @receiver(order_status_changed)
+def enqueue_push_new_order_to_drivers_on_ready_for_pickup(
+    sender,
+    order_id: int,
+    previous_status: str,
+    current_status: str,
+    **kwargs,
+) -> None:
+    if current_status != OrderStatus.READY_FOR_PICKUP:
+        return
+
+    from features.notifications.infrastructure.tasks import notify_drivers_new_order_task
+
+    notify_drivers_new_order_task.delay(order_id)
+
+
+@receiver(order_status_changed)
 def enqueue_notify_customer_on_the_way(
     sender,
     order_id: int,
