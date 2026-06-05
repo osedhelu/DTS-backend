@@ -1,0 +1,11 @@
+from typing import Any, Protocol
+
+from features.stores.domain.entities import Store, StoreStatus
+
+
+class StoreRepository(Protocol):
+    def create(self, data: dict[str, Any]) -> Store: ...
+
+    def get_by_id(self, store_id: int) -> Store | None: ...
+
+    def update_status(self, store_id: int, status: StoreStatus) -> Store: ...

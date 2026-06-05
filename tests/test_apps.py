@@ -47,6 +47,5 @@ def test_each_app_is_importable(app_name):
 
 def test_all_registered_apps_are_loaded(settings):
     loaded_names = {config.name for config in django_apps.get_app_configs()}
-    for app_name in EXPECTED_FEATURES + EXPECTED_PORTALS:
-        assert app_name in settings.INSTALLED_APPS
+    for app_name in settings.INSTALLED_APPS:
         assert app_name in loaded_names

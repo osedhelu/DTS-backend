@@ -7,3 +7,11 @@ class DomainValidationError(ValueError):
 
 class InvalidGeoLocationError(DomainValidationError):
     pass
+
+
+class StoreNotFoundError(DomainValidationError):
+    pass
+
+
+class NotStoreOwnerError(DomainValidationError):
+    pass
