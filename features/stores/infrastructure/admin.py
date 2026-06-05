@@ -1,19 +1,21 @@
 from django.contrib import admin
-from django.contrib.gis.admin import GISModelAdmin
 
 from features.stores.infrastructure.models import Store
 
 
 @admin.register(Store)
-class StoreAdmin(GISModelAdmin):
-    list_display = ("name", "owner", "status", "address", "created_at")
+class StoreAdmin(admin.ModelAdmin):
+    """Sin GISModelAdmin: evita dependencia de OpenLayers en Docker."""
+
+    list_display = ("name", "owner", "status", "display_coords", "address", "created_at")
     list_filter = ("status",)
     search_fields = ("name", "owner__username", "address")
     raw_id_fields = ("owner",)
-    gis_widget_kwargs = {
-        "attrs": {
-            "default_zoom": 12,
-            "default_lat": 4.711,
-            "default_lon": -74.072,
-        },
-    }
+    readonly_fields = ("display_coords",)
+    exclude = ("location",)
+
+    @admin.display(description="Coordenadas (lat, lon)")
+    def display_coords(self, obj: Store) -> str:
+        if obj.location is None:
+            return "—"
+        return f"{obj.location.y:.6f}, {obj.location.x:.6f}"
