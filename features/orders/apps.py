@@ -6,6 +6,7 @@ class OrdersConfig(AppConfig):
     name = "features.orders"
     label = "orders"
 
-    def ready(self):
+    def ready(self) -> None:
+        import features.orders.infrastructure.admin  # noqa: F401
         import features.orders.infrastructure.signals  # noqa: F401
 

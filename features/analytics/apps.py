@@ -6,3 +6,6 @@ class AnalyticsConfig(AppConfig):
     name = "features.analytics"
     label = "analytics"
 
+    def ready(self) -> None:
+        import features.analytics.infrastructure.admin  # noqa: F401
+

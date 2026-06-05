@@ -6,3 +6,6 @@ class ProductsConfig(AppConfig):
     name = "features.products"
     label = "products"
 
+    def ready(self) -> None:
+        import features.products.infrastructure.admin  # noqa: F401
+
