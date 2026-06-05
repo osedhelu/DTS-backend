@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.api.pagination import paginate_list
 from core.openapi import DetailErrorSerializer
 from features.accounts.infrastructure.permissions import IsMerchant
 from features.products.application.dto import (
@@ -73,7 +74,11 @@ class StoreProductListCreateView(APIView):
             category_id=parsed_category,
             subcategory_id=parsed_subcategory,
         )
-        return Response(ProductSerializer(products, many=True).data)
+        return paginate_list(
+            request,
+            products,
+            lambda page: ProductSerializer(page, many=True).data,
+        )
 
     def post(self, request, store_id: int):
         from features.products.application.use_cases.manage_product import (

@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.api.pagination import paginate_list
 from core.openapi import DetailErrorSerializer
 from features.accounts.domain.entities import UserRole
 from features.accounts.infrastructure.permissions import IsCustomer
@@ -42,9 +43,20 @@ class OrderListCreateView(APIView):
         from features.orders.infrastructure.repositories import DjangoOrderRepository
         from features.orders.infrastructure.serializers import OrderSerializer
 
+        status_filter = request.query_params.get("status")
+        parsed_status = OrderStatus(status_filter) if status_filter else None
+
         repository = DjangoOrderRepository()
-        orders = repository.list_for_user(request.user.id, UserRole(request.user.role))
-        return Response(OrderSerializer(orders, many=True).data)
+        orders = repository.list_for_user(
+            request.user.id,
+            UserRole(request.user.role),
+            status=parsed_status,
+        )
+        return paginate_list(
+            request,
+            orders,
+            lambda page: OrderSerializer(page, many=True).data,
+        )
 
     def post(self, request):
         from features.orders.application.use_cases.create_order import CreateOrderUseCase

@@ -35,8 +35,11 @@ class DjangoStoreRepository:
         except StoreModel.DoesNotExist:
             return None
 
-    def list_all(self) -> list[Store]:
-        return [_to_entity(model) for model in StoreModel.objects.all().order_by("name")]
+    def list_all(self, status: StoreStatus | None = None) -> list[Store]:
+        queryset = StoreModel.objects.all().order_by("name")
+        if status is not None:
+            queryset = queryset.filter(status=status.value)
+        return [_to_entity(model) for model in queryset]
 
     def update_status(self, store_id: int, status: StoreStatus) -> Store:
         model = StoreModel.objects.get(pk=store_id)

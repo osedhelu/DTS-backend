@@ -95,16 +95,16 @@ def test_list_products_by_store(api_client):
         response = api_client.get(f"/api/v1/stores/{store.id}/products/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]["name"] == "Clásica"
-        assert response.data[0]["product_type"] == ProductType.PHYSICAL
+        assert response.data["count"] == 1
+        assert response.data["results"][0]["name"] == "Clásica"
+        assert response.data["results"][0]["product_type"] == ProductType.PHYSICAL
 
         filtered = api_client.get(
             f"/api/v1/stores/{store.id}/products/",
             {"subcategory": sub.id},
         )
-        assert len(filtered.data) == 1
-        assert filtered.data[0]["subcategory_id"] == sub.id
+        assert filtered.data["count"] == 1
+        assert filtered.data["results"][0]["subcategory_id"] == sub.id
 
 
 @pytest.mark.skipif(

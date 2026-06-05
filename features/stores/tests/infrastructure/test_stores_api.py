@@ -66,9 +66,10 @@ def test_list_stores_public(api_client):
         response = api_client.get("/api/v1/stores/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]["name"] == "Tienda Pública"
-        assert response.data[0]["is_open"] is True
+        assert response.data["count"] == 1
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["name"] == "Tienda Pública"
+        assert response.data["results"][0]["is_open"] is True
 
 
 @pytest.mark.skipif(

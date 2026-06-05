@@ -85,7 +85,12 @@ class DjangoOrderRepository:
         model = OrderModel.objects.prefetch_related("items").get(pk=order_id)
         return _order_to_entity(model)
 
-    def list_for_user(self, user_id: int, role: UserRole) -> list[Order]:
+    def list_for_user(
+        self,
+        user_id: int,
+        role: UserRole,
+        status: OrderStatus | None = None,
+    ) -> list[Order]:
         queryset = OrderModel.objects.prefetch_related("items").order_by("-created_at")
 
         if role == UserRole.CUSTOMER:
@@ -96,5 +101,8 @@ class DjangoOrderRepository:
             queryset = queryset.filter(driver_id=user_id)
         else:
             return []
+
+        if status is not None:
+            queryset = queryset.filter(status=status.value)
 
         return [_order_to_entity(model) for model in queryset]

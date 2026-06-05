@@ -12,4 +12,9 @@ class OrderRepository(Protocol):
 
     def update_status(self, order_id: int, status: OrderStatus) -> Order: ...
 
-    def list_for_user(self, user_id: int, role: UserRole) -> list[Order]: ...
+    def list_for_user(
+        self,
+        user_id: int,
+        role: UserRole,
+        status: OrderStatus | None = None,
+    ) -> list[Order]: ...

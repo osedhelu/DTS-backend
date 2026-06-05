@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.api.pagination import paginate_list
 from core.openapi import DetailErrorSerializer
 from features.accounts.infrastructure.permissions import IsMerchant
 from features.stores.application.dto import CreateStoreDTO, UpdateStoreStatusDTO
@@ -37,10 +38,16 @@ class StoreListCreateView(APIView):
         from features.stores.infrastructure.repositories import DjangoStoreRepository
         from features.stores.infrastructure.serializers import StoreSerializer
 
+        status_filter = request.query_params.get("status")
+        parsed_status = StoreStatus(status_filter) if status_filter else None
+
         repository = DjangoStoreRepository()
-        stores = repository.list_all()
-        serializer = StoreSerializer(stores, many=True)
-        return Response(serializer.data)
+        stores = repository.list_all(status=parsed_status)
+        return paginate_list(
+            request,
+            stores,
+            lambda page: StoreSerializer(page, many=True).data,
+        )
 
     def post(self, request):
         from features.stores.application.use_cases.create_store import CreateStoreUseCase

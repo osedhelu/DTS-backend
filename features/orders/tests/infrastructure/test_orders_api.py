@@ -103,14 +103,14 @@ def test_order_api_flow(api_client):
 
         customer_list = api_client.get("/api/v1/orders/")
         assert customer_list.status_code == status.HTTP_200_OK
-        assert len(customer_list.data) == 1
-        assert customer_list.data[0]["id"] == order_id
+        assert customer_list.data["count"] == 1
+        assert customer_list.data["results"][0]["id"] == order_id
 
         _auth(api_client, merchant)
         merchant_list = api_client.get("/api/v1/orders/")
         assert merchant_list.status_code == status.HTTP_200_OK
-        assert len(merchant_list.data) == 1
-        assert merchant_list.data[0]["status"] == OrderStatus.CREATED
+        assert merchant_list.data["count"] == 1
+        assert merchant_list.data["results"][0]["status"] == OrderStatus.CREATED
 
         accept_response = api_client.patch(
             f"/api/v1/orders/{order_id}/",
