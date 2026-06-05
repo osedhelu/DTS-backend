@@ -9,6 +9,7 @@ urlpatterns = [
     path("api/v1/accounts/", include("features.accounts.infrastructure.urls")),
     path("api/v1/stores/", include("features.stores.infrastructure.urls")),
     path("api/v1/stores/", include("features.products.infrastructure.urls")),
+    path("api/v1/orders/", include("features.orders.infrastructure.urls")),
     # Portales web — activar en Fase 3
     # path("merchant/", include("portals.merchant.urls")),
     # path("admin-portal/", include("portals.admin_portal.urls")),

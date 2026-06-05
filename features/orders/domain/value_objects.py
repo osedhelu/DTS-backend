@@ -1,4 +1,13 @@
+from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
+
+from features.orders.domain.exceptions import InvalidServiceOrderDetailsError
+
+
+class OrderType(StrEnum):
+    DELIVERY = "delivery"
+    SERVICE = "service"
 
 
 class OrderStatus(StrEnum):
@@ -59,3 +68,43 @@ TERMINAL_STATUSES: frozenset[OrderStatus] = frozenset(
         OrderStatus.CANCELLED,
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceOrderDetails:
+    """Datos adicionales para pedidos de servicio a domicilio."""
+
+    service_address: str
+    customer_notes: str = ""
+    scheduled_at: datetime | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    duration_minutes: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.service_address.strip():
+            raise InvalidServiceOrderDetailsError(
+                "La dirección del servicio es obligatoria"
+            )
+
+        has_latitude = self.latitude is not None
+        has_longitude = self.longitude is not None
+        if has_latitude ^ has_longitude:
+            raise InvalidServiceOrderDetailsError(
+                "Debe indicar latitud y longitud juntas o ninguna"
+            )
+
+        if has_latitude and has_longitude:
+            if not -90.0 <= self.latitude <= 90.0:
+                raise InvalidServiceOrderDetailsError(
+                    f"Latitud inválida: {self.latitude}"
+                )
+            if not -180.0 <= self.longitude <= 180.0:
+                raise InvalidServiceOrderDetailsError(
+                    f"Longitud inválida: {self.longitude}"
+                )
+
+        if self.duration_minutes is not None and self.duration_minutes <= 0:
+            raise InvalidServiceOrderDetailsError(
+                "La duración estimada debe ser positiva"
+            )

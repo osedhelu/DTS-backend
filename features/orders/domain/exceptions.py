@@ -23,3 +23,7 @@ class OrderNotFoundError(DomainValidationError):
 
 class UnauthorizedOrderTransitionError(DomainValidationError):
     pass
+
+
+class InvalidServiceOrderDetailsError(DomainValidationError):
+    pass
