@@ -1,7 +1,10 @@
 from celery import shared_task
 
+from features.delivery.infrastructure.repositories import DjangoDriverAvailabilityRepository
 from features.notifications.application.dto import SendPushDTO
+from features.notifications.application.recipient_resolver import resolve_recipient_user_ids
 from features.notifications.application.use_cases.send_push import SendPushUseCase
+from features.notifications.domain.services import OrderStatusNotificationMapper
 from features.notifications.infrastructure.fcm_client import FCMClient, get_fcm_client
 from features.notifications.infrastructure.repositories import DjangoDeviceTokenRepository
 from features.orders.domain.exceptions import OrderNotFoundError
@@ -40,14 +43,27 @@ def send_push_task(self, order_id: int, notification_type: str) -> str:
         raise OrderNotFoundError(f"Pedido {order_id} no encontrado")
 
     order_status = OrderStatus(notification_type)
+    if not OrderStatusNotificationMapper.supports_status(order_status):
+        return f"skipped:{order_id}:unsupported_status"
+
     use_case = _build_send_push_use_case()
-    message_ids = use_case.execute(
-        SendPushDTO(
-            user_id=order.customer_id,
-            order_id=order_id,
-            order_status=order_status,
-        )
+    user_ids = resolve_recipient_user_ids(
+        order,
+        order_status,
+        DjangoDriverAvailabilityRepository(),
     )
+
+    message_ids: list[str] = []
+    for user_id in user_ids:
+        message_ids.extend(
+            use_case.execute(
+                SendPushDTO(
+                    user_id=user_id,
+                    order_id=order_id,
+                    order_status=order_status,
+                )
+            )
+        )
 
     return f"sent:{order_id}:{len(message_ids)}"
 
