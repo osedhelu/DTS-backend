@@ -1,4 +1,13 @@
-from features.accounts.infrastructure.models import DeviceToken
+from features.accounts.infrastructure.models import CustomUser, DeviceToken
+
+
+class DjangoCustomerEmailRepository:
+    def get_email_for_user(self, user_id: int) -> str | None:
+        return (
+            CustomUser.objects.filter(pk=user_id)
+            .values_list("email", flat=True)
+            .first()
+        )
 
 
 class DjangoDeviceTokenRepository:

@@ -13,3 +13,7 @@ class PushNotificationClient(Protocol):
         body: str,
         data: dict[str, str] | None = None,
     ) -> str: ...
+
+
+class CustomerEmailRepository(Protocol):
+    def get_email_for_user(self, user_id: int) -> str | None: ...

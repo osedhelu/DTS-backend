@@ -286,11 +286,6 @@ def test_any_status_change_dispatches_push(mock_delay):
         mock_delay.assert_called_once_with(order.id, OrderStatus.IN_PREPARATION)
 
         mock_delay.reset_mock()
-        order.status = OrderStatus.ON_THE_WAY
-        order.save(update_fields=["status", "updated_at"])
-        mock_delay.assert_called_once_with(order.id, OrderStatus.ON_THE_WAY)
-
-        mock_delay.reset_mock()
         order.status = OrderStatus.SEARCHING_DRIVER
         order.save(update_fields=["status", "updated_at"])
         mock_delay.assert_not_called()

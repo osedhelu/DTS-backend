@@ -3,10 +3,14 @@ from celery import shared_task
 from features.delivery.infrastructure.repositories import DjangoDriverAvailabilityRepository
 from features.notifications.application.dto import SendPushDTO
 from features.notifications.application.recipient_resolver import resolve_recipient_user_ids
+from features.notifications.application.use_cases.send_order_email import SendOrderEmailUseCase
 from features.notifications.application.use_cases.send_push import SendPushUseCase
 from features.notifications.domain.services import OrderStatusNotificationMapper
 from features.notifications.infrastructure.fcm_client import FCMClient, get_fcm_client
-from features.notifications.infrastructure.repositories import DjangoDeviceTokenRepository
+from features.notifications.infrastructure.repositories import (
+    DjangoCustomerEmailRepository,
+    DjangoDeviceTokenRepository,
+)
 from features.orders.domain.exceptions import OrderNotFoundError
 from features.orders.domain.value_objects import OrderStatus
 from features.orders.infrastructure.repositories import DjangoOrderRepository
@@ -27,8 +31,7 @@ def _build_send_push_use_case(
     name="features.notifications.infrastructure.tasks.notify_customer_task",
 )
 def notify_customer_task(self, order_id: int) -> str:
-    """Stub — notificación al cliente en T2.4.x."""
-    return f"pending:{order_id}"
+    return execute_order_push(order_id, OrderStatus.ON_THE_WAY)
 
 
 def execute_order_push(order_id: int, order_status: str) -> str:
@@ -89,3 +92,24 @@ def dispatch_order_push_task(self, order_id: int, order_status: str) -> str:
 def notify_drivers_new_order_task(self, order_id: int) -> str:
     """Stub — push a conductores online para pedidos listos para recoger."""
     return f"pending-drivers:{order_id}"
+
+
+def _build_send_order_email_use_case() -> SendOrderEmailUseCase:
+    return SendOrderEmailUseCase(
+        order_repository=DjangoOrderRepository(),
+        customer_email_repository=DjangoCustomerEmailRepository(),
+    )
+
+
+def execute_order_email(order_id: int, order_status: str) -> str:
+    use_case = _build_send_order_email_use_case()
+    return use_case.execute(order_id, OrderStatus(order_status))
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    name="features.notifications.infrastructure.tasks.send_email_notification",
+)
+def send_email_notification(self, order_id: int, order_status: str) -> str:
+    return execute_order_email(order_id, order_status)

@@ -53,6 +53,22 @@ def enqueue_assign_driver_on_ready_for_pickup(
 
 
 @receiver(order_status_changed)
+def enqueue_notify_customer_on_the_way(
+    sender,
+    order_id: int,
+    previous_status: str,
+    current_status: str,
+    **kwargs,
+) -> None:
+    if current_status != OrderStatus.ON_THE_WAY:
+        return
+
+    from features.notifications.infrastructure.tasks import notify_customer_task
+
+    notify_customer_task.delay(order_id)
+
+
+@receiver(order_status_changed)
 def enqueue_dispatch_order_push_on_status_change(
     sender,
     order_id: int,
@@ -60,6 +76,9 @@ def enqueue_dispatch_order_push_on_status_change(
     current_status: str,
     **kwargs,
 ) -> None:
+    if current_status == OrderStatus.ON_THE_WAY:
+        return
+
     from features.notifications.domain.services import OrderStatusNotificationMapper
     from features.notifications.infrastructure.tasks import dispatch_order_push_task
 
