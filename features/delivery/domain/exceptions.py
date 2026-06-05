@@ -19,3 +19,7 @@ class InvalidOrderStatusForTrackingError(DomainValidationError):
 
 class ServiceOrderNotTrackableError(DomainValidationError):
     pass
+
+
+class UnauthorizedTrackingAccessError(DomainValidationError):
+    pass

@@ -23,6 +23,15 @@ def _tracking_to_entity(model: DeliveryTrackingModel) -> DeliveryTracking:
 
 
 class DjangoDeliveryTrackingRepository:
+    def get_by_order_id(self, order_id: int) -> DeliveryTracking | None:
+        try:
+            model = DeliveryTrackingModel.objects.prefetch_related("points").get(
+                order_id=order_id
+            )
+        except DeliveryTrackingModel.DoesNotExist:
+            return None
+        return _tracking_to_entity(model)
+
     def get_or_create(self, order_id: int) -> DeliveryTracking:
         model, _ = DeliveryTrackingModel.objects.get_or_create(order_id=order_id)
         model = DeliveryTrackingModel.objects.prefetch_related("points").get(pk=model.pk)
