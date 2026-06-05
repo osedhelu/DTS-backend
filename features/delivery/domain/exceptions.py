@@ -23,3 +23,7 @@ class ServiceOrderNotTrackableError(DomainValidationError):
 
 class UnauthorizedTrackingAccessError(DomainValidationError):
     pass
+
+
+class NoDriverAvailableError(DomainValidationError):
+    pass

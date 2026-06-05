@@ -98,7 +98,7 @@ class LoginView(TokenObtainPairView):
     ),
 )
 class AdminDashboardView(APIView):
-    """Endpoint protegido solo para Super Admin (usado en tests y portal admin)."""
+    """Endpoint protegido solo para Super Admin (usado en tests y web-admin)."""
 
     permission_classes = [IsSuperAdmin]
 

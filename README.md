@@ -1,6 +1,8 @@
 # DTS Backend
 
-API Django + portales web. Parte del monorepo [DTS-E-Commerce](../README.md).
+API REST Django (DRF). Parte del monorepo [DTS-E-Commerce](../README.md).
+
+El frontend administrativo vive en `web-admin/` (Next.js), no en este proyecto.
 
 ## Setup
 

@@ -3,13 +3,10 @@ from pathlib import Path
 
 
 def discover_django_apps(base_dir: Path) -> list[str]:
-    """Descubre apps en features/ y portals/ que tengan apps.py."""
+    """Descubre apps en features/ que tengan apps.py."""
     apps: list[str] = []
 
-    for package_root, prefix in (
-        (base_dir / "features", "features"),
-        (base_dir / "portals", "portals"),
-    ):
+    for package_root, prefix in ((base_dir / "features", "features"),):
         if not package_root.is_dir():
             continue
         for app_dir in sorted(package_root.iterdir()):
