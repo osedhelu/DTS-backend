@@ -7,7 +7,10 @@ SECRET_KEY = "test-secret-key"
 from core.settings.apps_registry import build_installed_apps
 
 # Apps que requieren GDAL/PostGIS — se excluyen del suite por defecto
-GIS_DEPENDENT_MODULES = frozenset({"stores", "products", "orders", "delivery"})
+# analytics importa Store (PostGIS); sin GDAL en el runner de pytest
+GIS_DEPENDENT_MODULES = frozenset(
+    {"stores", "products", "orders", "delivery", "analytics"}
+)
 
 
 def _exclude_from_test_apps(entry: str) -> bool:
