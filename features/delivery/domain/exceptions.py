@@ -7,3 +7,15 @@ class DomainValidationError(ValueError):
 
 class InvalidTrackingPointError(DomainValidationError):
     pass
+
+
+class UnauthorizedDriverError(DomainValidationError):
+    pass
+
+
+class InvalidOrderStatusForTrackingError(DomainValidationError):
+    pass
+
+
+class ServiceOrderNotTrackableError(DomainValidationError):
+    pass
