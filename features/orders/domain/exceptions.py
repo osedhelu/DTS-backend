@@ -7,3 +7,7 @@ class DomainValidationError(ValueError):
 
 class InvalidOrderTransitionError(DomainValidationError):
     pass
+
+
+class InvalidOrderItemError(DomainValidationError):
+    pass
