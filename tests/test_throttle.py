@@ -1,6 +1,12 @@
 from django.test.utils import override_settings
-from django.urls import reverse
+from django.urls import path
+from django.core.cache import cache
 from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core.api.throttling import AnonBurstThrottle
 
 
 THROTTLE_SETTINGS = {
@@ -24,12 +30,30 @@ THROTTLE_SETTINGS = {
 }
 
 
-@override_settings(REST_FRAMEWORK=THROTTLE_SETTINGS)
-def test_throttle(api_client):
-    # Usamos un endpoint DRF sin dependencia de GDAL para evitar fallos por entorno.
-    first = api_client.post(reverse("accounts-register"), {}, format="json")
-    second = api_client.post(reverse("accounts-register"), {}, format="json")
+class _ThrottleProbeView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonBurstThrottle]
 
-    assert first.status_code == status.HTTP_400_BAD_REQUEST
-    assert second.status_code == status.HTTP_429_TOO_MANY_REQUESTS
-    assert "detail" in second.data
+    def get(self, request):
+        return Response({"ok": True}, status=status.HTTP_200_OK)
+
+
+urlpatterns = [
+    path("test/throttle-probe/", _ThrottleProbeView.as_view(), name="throttle-probe"),
+]
+
+
+@override_settings(ROOT_URLCONF="tests.test_throttle")
+def test_throttle(api_client):
+    cache.clear()
+    original_rates = dict(AnonBurstThrottle.THROTTLE_RATES)
+    AnonBurstThrottle.THROTTLE_RATES = {"anon": "1/min"}
+    try:
+        first = api_client.get("/test/throttle-probe/")
+        second = api_client.get("/test/throttle-probe/")
+
+        assert first.status_code == status.HTTP_200_OK
+        assert second.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+        assert "detail" in second.data
+    finally:
+        AnonBurstThrottle.THROTTLE_RATES = original_rates
