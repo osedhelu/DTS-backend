@@ -6,6 +6,3 @@ class StoresConfig(AppConfig):
     name = "features.stores"
     label = "stores"
 
-    def ready(self) -> None:
-        import features.stores.infrastructure.admin  # noqa: F401
-

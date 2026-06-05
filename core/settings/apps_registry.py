@@ -2,18 +2,23 @@
 from pathlib import Path
 
 
+def _app_config_path(module_name: str) -> str:
+    class_name = "".join(part.capitalize() for part in module_name.split("_")) + "Config"
+    return f"features.{module_name}.apps.{class_name}"
+
+
 def discover_django_apps(base_dir: Path) -> list[str]:
-    """Descubre apps en features/ que tengan apps.py."""
+    """Descubre AppConfig explícito en features/ (garantiza hooks ready())."""
     apps: list[str] = []
 
-    for package_root, prefix in ((base_dir / "features", "features"),):
+    for package_root, _prefix in ((base_dir / "features", "features"),):
         if not package_root.is_dir():
             continue
         for app_dir in sorted(package_root.iterdir()):
             if not app_dir.is_dir() or app_dir.name.startswith("_"):
                 continue
             if (app_dir / "apps.py").exists():
-                apps.append(f"{prefix}.{app_dir.name}")
+                apps.append(_app_config_path(app_dir.name))
 
     return apps
 
@@ -31,4 +36,5 @@ def build_installed_apps(base_dir: Path) -> list[str]:
         "corsheaders",
         "drf_spectacular",
     ]
-    return core_apps + discover_django_apps(base_dir)
+    # CoreConfig al final: carga admin.py de cada feature tras registrar modelos
+    return core_apps + discover_django_apps(base_dir) + ["core.apps.CoreConfig"]

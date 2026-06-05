@@ -7,18 +7,21 @@ SECRET_KEY = "test-secret-key"
 from core.settings.apps_registry import build_installed_apps
 
 # Apps que requieren GDAL/PostGIS — se excluyen del suite por defecto
-GIS_DEPENDENT_APPS = frozenset(
-    {
-        "django.contrib.gis",
-        "features.stores",
-        "features.products",
-        "features.orders",
-        "features.delivery",
-    }
-)
+GIS_DEPENDENT_MODULES = frozenset({"stores", "products", "orders", "delivery"})
+
+
+def _exclude_from_test_apps(entry: str) -> bool:
+    if entry in {"django.contrib.gis", "core.apps.CoreConfig"}:
+        return True
+    if entry.startswith("features.") and ".apps." in entry:
+        return entry.split(".")[1] in GIS_DEPENDENT_MODULES
+    return False
+
 
 INSTALLED_APPS = [
-    app for app in build_installed_apps(BASE_DIR) if app not in GIS_DEPENDENT_APPS  # noqa: F405
+    app
+    for app in build_installed_apps(BASE_DIR)  # noqa: F405
+    if not _exclude_from_test_apps(app)
 ]
 
 # Tests usan SQLite en memoria (sin PostGIS real)

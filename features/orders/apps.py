@@ -7,6 +7,5 @@ class OrdersConfig(AppConfig):
     label = "orders"
 
     def ready(self) -> None:
-        import features.orders.infrastructure.admin  # noqa: F401
         import features.orders.infrastructure.signals  # noqa: F401
 

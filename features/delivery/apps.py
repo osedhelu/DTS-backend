@@ -6,6 +6,3 @@ class DeliveryConfig(AppConfig):
     name = "features.delivery"
     label = "delivery"
 
-    def ready(self) -> None:
-        import features.delivery.infrastructure.admin  # noqa: F401
-

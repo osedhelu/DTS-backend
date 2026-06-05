@@ -6,5 +6,3 @@ class AccountsConfig(AppConfig):
     name = "features.accounts"
     label = "accounts"
 
-    def ready(self) -> None:
-        import features.accounts.infrastructure.admin  # noqa: F401
