@@ -139,3 +139,40 @@ class CustomerProfile(models.Model):
 
     def __str__(self) -> str:
         return f"Cliente {self.user.username}"
+
+
+class DevicePlatform(models.TextChoices):
+    ANDROID = "android", "Android"
+    IOS = "ios", "iOS"
+    WEB = "web", "Web"
+
+
+class DeviceToken(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="device_tokens",
+    )
+    token = models.CharField(max_length=512)
+    platform = models.CharField(
+        max_length=10,
+        choices=DevicePlatform.choices,
+        default=DevicePlatform.ANDROID,
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "accounts_device_token"
+        verbose_name = "token de dispositivo"
+        verbose_name_plural = "tokens de dispositivo"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "token"],
+                name="unique_device_token_per_user",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user.username} — {self.platform}"

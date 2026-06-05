@@ -27,3 +27,7 @@ class UnauthorizedOrderTransitionError(DomainValidationError):
 
 class InvalidServiceOrderDetailsError(DomainValidationError):
     pass
+
+
+class InvalidServiceOrderError(DomainValidationError):
+    pass

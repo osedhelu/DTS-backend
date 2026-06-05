@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -11,7 +11,12 @@ from features.accounts.domain.entities import UserRole
 from features.accounts.domain.exceptions import DomainValidationError, DuplicateEmailError
 from features.accounts.infrastructure.permissions import IsSuperAdmin
 from features.accounts.infrastructure.repositories import DjangoUserRepository
-from features.accounts.infrastructure.serializers import RegisterSerializer, UserResponseSerializer
+from features.accounts.infrastructure.serializers import (
+    DeviceTokenResponseSerializer,
+    DeviceTokenSerializer,
+    RegisterSerializer,
+    UserResponseSerializer,
+)
 
 
 class RegisterView(APIView):
@@ -72,3 +77,51 @@ class AdminDashboardView(APIView):
 
     def get(self, request):
         return Response({"detail": "Panel super admin", "user": request.user.username})
+
+
+class DeviceTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from features.accounts.infrastructure.models import DeviceToken
+
+        serializer = DeviceTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        device_token, _created = DeviceToken.objects.update_or_create(
+            user=request.user,
+            token=data["token"],
+            defaults={
+                "platform": data.get("platform", "android"),
+                "is_active": True,
+            },
+        )
+
+        return Response(
+            DeviceTokenResponseSerializer(
+                {
+                    "id": device_token.id,
+                    "token": device_token.token,
+                    "platform": device_token.platform,
+                    "is_active": device_token.is_active,
+                }
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request):
+        from features.accounts.infrastructure.models import DeviceToken
+
+        serializer = DeviceTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data["token"]
+
+        deleted, _ = DeviceToken.objects.filter(user=request.user, token=token).delete()
+        if deleted == 0:
+            return Response(
+                {"detail": "Token no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

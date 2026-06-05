@@ -1,8 +1,23 @@
 from features.accounts.domain.entities import UserRole
 from features.orders.domain.entities import Order, OrderItem
-from features.orders.domain.value_objects import OrderStatus
+from features.orders.domain.value_objects import OrderStatus, OrderType, ServiceOrderDetails
 from features.orders.infrastructure.models import Order as OrderModel
 from features.orders.infrastructure.models import OrderItem as OrderItemModel
+
+
+def _build_service_details(model: OrderModel) -> ServiceOrderDetails | None:
+    if model.order_type != OrderType.SERVICE:
+        return None
+    if not model.service_address:
+        return None
+    return ServiceOrderDetails(
+        service_address=model.service_address,
+        customer_notes=model.customer_notes,
+        scheduled_at=model.scheduled_at,
+        latitude=model.service_latitude,
+        longitude=model.service_longitude,
+        duration_minutes=model.duration_minutes,
+    )
 
 
 def _order_to_entity(model: OrderModel) -> Order:
@@ -12,10 +27,12 @@ def _order_to_entity(model: OrderModel) -> Order:
         store_id=model.store_id,
         driver_id=model.driver_id,
         status=OrderStatus(model.status),
+        order_type=OrderType(model.order_type),
+        service_details=_build_service_details(model),
         items=[
             OrderItem(
                 id=item.id,
-                product_id=item.product_id,
+                product_id=item.product_id or 0,
                 product_name=item.product_name,
                 unit_price=item.unit_price,
                 quantity=item.quantity,
@@ -31,6 +48,13 @@ class DjangoOrderRepository:
             customer_id=data["customer_id"],
             store_id=data["store_id"],
             status=data["status"],
+            order_type=data.get("order_type", OrderType.DELIVERY),
+            service_address=data.get("service_address", ""),
+            customer_notes=data.get("customer_notes", ""),
+            scheduled_at=data.get("scheduled_at"),
+            service_latitude=data.get("service_latitude"),
+            service_longitude=data.get("service_longitude"),
+            duration_minutes=data.get("duration_minutes"),
         )
         for item in data["items"]:
             OrderItemModel.objects.create(

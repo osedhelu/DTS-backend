@@ -73,6 +73,60 @@ class OrderListCreateView(APIView):
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
+class ServiceOrderCreateView(APIView):
+    permission_classes = [IsCustomer]
+
+    def post(self, request):
+        from features.orders.application.dto import CreateServiceOrderDTO, OrderLineDTO
+        from features.orders.application.use_cases.create_service_order import (
+            CreateServiceOrderUseCase,
+        )
+        from features.orders.infrastructure.repositories import DjangoOrderRepository
+        from features.orders.infrastructure.serializers import (
+            CreateServiceOrderSerializer,
+            OrderSerializer,
+        )
+        from features.products.infrastructure.repositories import DjangoProductRepository
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        serializer = CreateServiceOrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        use_case = CreateServiceOrderUseCase(
+            DjangoOrderRepository(),
+            DjangoProductRepository(),
+            DjangoStoreRepository(),
+        )
+
+        try:
+            order = use_case.execute(
+                CreateServiceOrderDTO(
+                    customer_id=request.user.id,
+                    store_id=data["store_id"],
+                    items=tuple(
+                        OrderLineDTO(product_id=item["product_id"], quantity=item["quantity"])
+                        for item in data["items"]
+                    ),
+                    service_address=data["service_address"],
+                    customer_notes=data.get("customer_notes", ""),
+                    scheduled_at=data.get("scheduled_at"),
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
+                )
+            )
+        except EmptyCartError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except StoreNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except ProductNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DomainValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+
 class OrderDetailView(APIView):
     permission_classes = [IsAuthenticated]
 

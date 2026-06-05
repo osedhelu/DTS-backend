@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from features.orders.domain.exceptions import InvalidOrderItemError
-from features.orders.domain.value_objects import OrderStatus
+from features.orders.domain.value_objects import OrderStatus, OrderType, ServiceOrderDetails
 
 
 @dataclass
@@ -34,8 +34,14 @@ class Order:
     store_id: int
     items: list[OrderItem] = field(default_factory=list)
     status: OrderStatus = OrderStatus.CREATED
+    order_type: OrderType = OrderType.DELIVERY
     driver_id: int | None = None
+    service_details: ServiceOrderDetails | None = None
     id: int | None = None
+
+    @property
+    def is_service(self) -> bool:
+        return self.order_type == OrderType.SERVICE
 
     @property
     def total(self) -> Decimal:

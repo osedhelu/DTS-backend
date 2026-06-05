@@ -36,3 +36,19 @@ class UserResponseSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+
+
+class DeviceTokenSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=512)
+    platform = serializers.ChoiceField(
+        choices=["android", "ios", "web"],
+        default="android",
+        required=False,
+    )
+
+
+class DeviceTokenResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    token = serializers.CharField()
+    platform = serializers.CharField()
+    is_active = serializers.BooleanField()

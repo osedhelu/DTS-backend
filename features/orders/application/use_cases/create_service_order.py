@@ -1,16 +1,16 @@
-from features.orders.application.dto import CreateOrderDTO
+from features.orders.application.dto import CreateServiceOrderDTO
 from features.orders.domain.entities import Order, OrderItem
-from features.orders.domain.exceptions import EmptyCartError
+from features.orders.domain.exceptions import EmptyCartError, InvalidServiceOrderError
 from features.orders.domain.repositories import OrderRepository
-from features.orders.domain.value_objects import OrderStatus, OrderType
-from features.products.domain.exceptions import InsufficientStockError, ProductNotFoundError
+from features.orders.domain.value_objects import OrderStatus, OrderType, ServiceOrderDetails
+from features.products.domain.entities import ProductType
+from features.products.domain.exceptions import ProductNotFoundError
 from features.products.domain.repositories import ProductRepository
-from features.products.domain.services import StockValidator
 from features.stores.domain.exceptions import StoreNotFoundError
 from features.stores.domain.repositories import StoreRepository
 
 
-class CreateOrderUseCase:
+class CreateServiceOrderUseCase:
     def __init__(
         self,
         order_repository: OrderRepository,
@@ -21,7 +21,7 @@ class CreateOrderUseCase:
         self._product_repository = product_repository
         self._store_repository = store_repository
 
-    def execute(self, dto: CreateOrderDTO) -> Order:
+    def execute(self, dto: CreateServiceOrderDTO) -> Order:
         if not dto.items:
             raise EmptyCartError("No se puede crear un pedido sin ítems")
 
@@ -30,6 +30,8 @@ class CreateOrderUseCase:
             raise StoreNotFoundError(f"Comercio {dto.store_id} no encontrado")
 
         order_items: list[OrderItem] = []
+        duration_minutes: int | None = None
+
         for line in dto.items:
             product = self._product_repository.get_by_id(line.product_id)
             if product is None or product.store_id != dto.store_id:
@@ -40,8 +42,10 @@ class CreateOrderUseCase:
                 raise ProductNotFoundError(
                     f"Producto '{product.name}' no está disponible"
                 )
-
-            StockValidator.validate(product, line.quantity)
+            if product.product_type != ProductType.SERVICE:
+                raise InvalidServiceOrderError(
+                    f"El producto '{product.name}' no es un servicio"
+                )
 
             order_items.append(
                 OrderItem(
@@ -52,12 +56,30 @@ class CreateOrderUseCase:
                 )
             )
 
+            if product.duration_minutes:
+                duration_minutes = max(duration_minutes or 0, product.duration_minutes)
+
+        service_details = ServiceOrderDetails(
+            service_address=dto.service_address,
+            customer_notes=dto.customer_notes,
+            scheduled_at=dto.scheduled_at,
+            latitude=dto.latitude,
+            longitude=dto.longitude,
+            duration_minutes=duration_minutes,
+        )
+
         return self._order_repository.create(
             {
                 "customer_id": dto.customer_id,
                 "store_id": dto.store_id,
                 "status": OrderStatus.CREATED,
-                "order_type": OrderType.DELIVERY,
+                "order_type": OrderType.SERVICE,
+                "service_address": service_details.service_address,
+                "customer_notes": service_details.customer_notes,
+                "scheduled_at": service_details.scheduled_at,
+                "service_latitude": service_details.latitude,
+                "service_longitude": service_details.longitude,
+                "duration_minutes": service_details.duration_minutes,
                 "items": [
                     {
                         "product_id": item.product_id,
