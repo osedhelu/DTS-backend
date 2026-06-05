@@ -64,7 +64,18 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "DTS Delivery API",
+    "DESCRIPTION": (
+        "API REST de la plataforma DTS Delivery. "
+        "Incluye autenticación, comercios, catálogo, pedidos y tracking GPS."
+    ),
     "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": "/api/v1/",
+    "TAGS": [],  # tags por ruta vía POSTPROCESSING_HOOKS (core.openapi.assign_path_tags)
+    "POSTPROCESSING_HOOKS": [
+        "core.openapi.assign_path_tags",
+    ],
 }
 
 CELERY_BROKER_URL = REDIS_URL

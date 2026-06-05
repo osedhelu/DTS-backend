@@ -1,8 +1,10 @@
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.openapi import DetailErrorSerializer
 from features.accounts.infrastructure.permissions import IsMerchant
 from features.products.application.dto import (
     CreateCategoryDTO,
@@ -19,8 +21,33 @@ from features.products.domain.exceptions import (
     ProductNotFoundError,
 )
 from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
+from features.products.infrastructure.serializers import (
+    CategoryTreeSerializer,
+    CreateCategorySerializer,
+    CreateProductSerializer,
+    CreateServiceSerializer,
+    CreateSubcategorySerializer,
+    ProductSerializer,
+)
+
+CategoryResponseSerializer = inline_serializer(
+    name="CategoryResponse",
+    fields={
+        "id": serializers.IntegerField(),
+        "name": serializers.CharField(),
+        "store_id": serializers.IntegerField(),
+        "parent_id": serializers.IntegerField(allow_null=True),
+    },
+)
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: ProductSerializer(many=True)}),
+    post=extend_schema(
+        request=CreateProductSerializer,
+        responses={201: ProductSerializer, 400: DetailErrorSerializer, 403: DetailErrorSerializer},
+    ),
+)
 class StoreProductListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -120,6 +147,20 @@ class StoreProductListCreateView(APIView):
         return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        request=inline_serializer(
+            name="DeactivateProduct",
+            fields={"is_active": serializers.BooleanField()},
+        ),
+        responses={
+            200: ProductSerializer,
+            400: DetailErrorSerializer,
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
 class StoreProductDetailView(APIView):
     permission_classes = [IsMerchant]
 
@@ -159,6 +200,13 @@ class StoreProductDetailView(APIView):
         return Response(ProductSerializer(product).data)
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: CategoryTreeSerializer(many=True)}),
+    post=extend_schema(
+        request=CreateCategorySerializer,
+        responses={201: CategoryResponseSerializer, 400: DetailErrorSerializer},
+    ),
+)
 class StoreCategoryListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":

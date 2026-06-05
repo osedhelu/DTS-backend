@@ -1,10 +1,12 @@
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from core.openapi import DetailErrorSerializer
 from features.accounts.application.dto import RegisterUserDTO
 from features.accounts.application.use_cases.register_user import RegisterUserUseCase
 from features.accounts.domain.entities import UserRole
@@ -19,6 +21,12 @@ from features.accounts.infrastructure.serializers import (
 )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        request=RegisterSerializer,
+        responses={201: UserResponseSerializer, 400: DetailErrorSerializer},
+    ),
+)
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -65,11 +73,30 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
 
+@extend_schema_view(
+    post=extend_schema(
+        request=CustomTokenObtainPairSerializer,
+        responses={200: CustomTokenObtainPairSerializer},
+    ),
+)
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainPairSerializer
 
 
+@extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: inline_serializer(
+                name="AdminDashboard",
+                fields={
+                    "detail": serializers.CharField(),
+                    "user": serializers.CharField(),
+                },
+            ),
+        },
+    ),
+)
 class AdminDashboardView(APIView):
     """Endpoint protegido solo para Super Admin (usado en tests y portal admin)."""
 
@@ -79,6 +106,16 @@ class AdminDashboardView(APIView):
         return Response({"detail": "Panel super admin", "user": request.user.username})
 
 
+@extend_schema_view(
+    post=extend_schema(
+        request=DeviceTokenSerializer,
+        responses={201: DeviceTokenResponseSerializer, 400: DetailErrorSerializer},
+    ),
+    delete=extend_schema(
+        request=DeviceTokenSerializer,
+        responses={204: None, 404: DetailErrorSerializer},
+    ),
+)
 class DeviceTokenView(APIView):
     permission_classes = [IsAuthenticated]
 

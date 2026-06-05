@@ -1,8 +1,10 @@
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.openapi import DetailErrorSerializer
 from features.accounts.infrastructure.permissions import IsCustomer, IsDriver
 from features.delivery.domain.exceptions import (
     DomainValidationError,
@@ -12,8 +14,30 @@ from features.delivery.domain.exceptions import (
     UnauthorizedTrackingAccessError,
 )
 from features.orders.domain.exceptions import OrderNotFoundError
+from features.delivery.infrastructure.serializers import (
+    DeliveryTrackingSerializer,
+    RecordLocationSerializer,
+)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: DeliveryTrackingSerializer,
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+    post=extend_schema(
+        request=RecordLocationSerializer,
+        responses={
+            201: DeliveryTrackingSerializer,
+            400: DetailErrorSerializer,
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
 class OrderTrackingView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":

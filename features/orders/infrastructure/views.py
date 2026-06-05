@@ -1,8 +1,10 @@
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.openapi import DetailErrorSerializer
 from features.accounts.domain.entities import UserRole
 from features.accounts.infrastructure.permissions import IsCustomer
 from features.orders.application.dto import CreateOrderDTO, OrderLineDTO, TransitionOrderStatusDTO
@@ -15,8 +17,21 @@ from features.orders.domain.exceptions import (
 from features.orders.domain.value_objects import OrderStatus
 from features.products.domain.exceptions import InsufficientStockError, ProductNotFoundError
 from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
+from features.orders.infrastructure.serializers import (
+    CreateOrderSerializer,
+    CreateServiceOrderSerializer,
+    OrderSerializer,
+    TransitionOrderSerializer,
+)
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: OrderSerializer(many=True)}),
+    post=extend_schema(
+        request=CreateOrderSerializer,
+        responses={201: OrderSerializer, 400: DetailErrorSerializer, 404: DetailErrorSerializer},
+    ),
+)
 class OrderListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -73,6 +88,12 @@ class OrderListCreateView(APIView):
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    post=extend_schema(
+        request=CreateServiceOrderSerializer,
+        responses={201: OrderSerializer, 400: DetailErrorSerializer, 404: DetailErrorSerializer},
+    ),
+)
 class ServiceOrderCreateView(APIView):
     permission_classes = [IsCustomer]
 
@@ -127,6 +148,17 @@ class ServiceOrderCreateView(APIView):
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        request=TransitionOrderSerializer,
+        responses={
+            200: OrderSerializer,
+            400: DetailErrorSerializer,
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
 class OrderDetailView(APIView):
     permission_classes = [IsAuthenticated]
 

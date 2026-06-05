@@ -1,8 +1,10 @@
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.openapi import DetailErrorSerializer
 from features.accounts.infrastructure.permissions import IsMerchant
 from features.stores.application.dto import CreateStoreDTO, UpdateStoreStatusDTO
 from features.stores.domain.entities import StoreStatus
@@ -11,8 +13,20 @@ from features.stores.domain.exceptions import (
     NotStoreOwnerError,
     StoreNotFoundError,
 )
+from features.stores.infrastructure.serializers import (
+    CreateStoreSerializer,
+    StoreSerializer,
+    UpdateStoreStatusSerializer,
+)
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: StoreSerializer(many=True)}),
+    post=extend_schema(
+        request=CreateStoreSerializer,
+        responses={201: StoreSerializer, 400: DetailErrorSerializer},
+    ),
+)
 class StoreListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -55,6 +69,17 @@ class StoreListCreateView(APIView):
         return Response(StoreSerializer(store).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    patch=extend_schema(
+        request=UpdateStoreStatusSerializer,
+        responses={
+            200: StoreSerializer,
+            400: DetailErrorSerializer,
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
 class StoreDetailView(APIView):
     permission_classes = [IsMerchant]
 
