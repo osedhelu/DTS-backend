@@ -1,0 +1,37 @@
+[project]
+name = "dts-backend"
+version = "0.1.0"
+description = "DTS Delivery Platform - Backend API"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.1",
+    "djangorestframework>=3.15",
+    "djangorestframework-simplejwt>=5.3",
+    "django-environ>=0.11",
+    "psycopg[binary]>=3.2",
+    "django-cors-headers>=4.4",
+    "drf-spectacular>=0.27",
+    "celery>=5.4",
+    "redis>=5.0",
+    "channels>=4.1",
+    "channels-redis>=4.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.9",
+    "pytest-cov>=5.0",
+    "factory-boy>=3.3",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "core.settings.test"
+pythonpath = ["."]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

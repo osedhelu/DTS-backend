@@ -1,0 +1,6 @@
+from typing import Protocol
+
+
+class UserRepository(Protocol):
+    def get_by_email(self, email: str): ...
+    def create(self, data: dict): ...
