@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.conf import settings
 
 from features.analytics.infrastructure.tasks import calculate_daily_stats
@@ -9,7 +11,11 @@ def test_celery_eager_settings_enabled():
 
 
 def test_celery_tasks_run_synchronously_in_tests():
-    result = calculate_daily_stats.delay()
+    with patch(
+        "features.analytics.infrastructure.tasks.execute_calculate_daily_stats",
+        return_value="saved:2026-06-04:0:0",
+    ):
+        result = calculate_daily_stats.delay()
 
     assert result.successful()
-    assert result.get(timeout=1) == "pending"
+    assert result.get(timeout=1) == "saved:2026-06-04:0:0"
