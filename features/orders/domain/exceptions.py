@@ -11,3 +11,15 @@ class InvalidOrderTransitionError(DomainValidationError):
 
 class InvalidOrderItemError(DomainValidationError):
     pass
+
+
+class EmptyCartError(DomainValidationError):
+    pass
+
+
+class OrderNotFoundError(DomainValidationError):
+    pass
+
+
+class UnauthorizedOrderTransitionError(DomainValidationError):
+    pass
