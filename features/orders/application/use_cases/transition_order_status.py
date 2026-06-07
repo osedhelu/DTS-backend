@@ -5,8 +5,8 @@ from features.orders.domain.exceptions import (
     UnauthorizedOrderTransitionError,
 )
 from features.orders.domain.repositories import OrderRepository
-from features.orders.domain.services import OrderStateMachine
-from features.orders.domain.value_objects import OrderStatus
+from features.orders.domain.services import OrderStateMachine, ServiceOrderStateMachine
+from features.orders.domain.value_objects import OrderStatus, OrderType
 from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
 from features.stores.domain.repositories import StoreRepository
 
@@ -16,6 +16,17 @@ MERCHANT_TARGET_STATUSES: frozenset[OrderStatus] = frozenset(
         OrderStatus.IN_PREPARATION,
         OrderStatus.READY_FOR_PICKUP,
         OrderStatus.SEARCHING_DRIVER,
+        OrderStatus.CANCELLED,
+    }
+)
+
+MERCHANT_SERVICE_TARGET_STATUSES: frozenset[OrderStatus] = frozenset(
+    {
+        OrderStatus.ACCEPTED_BY_MERCHANT,
+        OrderStatus.SCHEDULED,
+        OrderStatus.PROVIDER_EN_ROUTE,
+        OrderStatus.IN_PROGRESS,
+        OrderStatus.COMPLETED,
         OrderStatus.CANCELLED,
     }
 )
@@ -49,7 +60,10 @@ class TransitionOrderStatusUseCase:
         if order is None:
             raise OrderNotFoundError(f"Pedido {dto.order_id} no encontrado")
 
-        OrderStateMachine.transition(order.status, dto.target_status)
+        if order.order_type == OrderType.SERVICE:
+            ServiceOrderStateMachine.transition(order.status, dto.target_status)
+        else:
+            OrderStateMachine.transition(order.status, dto.target_status)
         self._authorize_transition(order, dto)
 
         return self._order_repository.update_status(dto.order_id, dto.target_status)
@@ -57,7 +71,12 @@ class TransitionOrderStatusUseCase:
     def _authorize_transition(self, order, dto: TransitionOrderStatusDTO) -> None:
         if dto.actor_role == UserRole.MERCHANT:
             self._ensure_merchant_owns_store(order.store_id, dto.actor_id)
-            if dto.target_status not in MERCHANT_TARGET_STATUSES:
+            allowed_targets = (
+                MERCHANT_SERVICE_TARGET_STATUSES
+                if order.order_type == OrderType.SERVICE
+                else MERCHANT_TARGET_STATUSES
+            )
+            if dto.target_status not in allowed_targets:
                 raise UnauthorizedOrderTransitionError(
                     "El comercio no puede aplicar este estado al pedido"
                 )
