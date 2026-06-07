@@ -60,11 +60,12 @@ class TransitionOrderStatusUseCase:
         if order is None:
             raise OrderNotFoundError(f"Pedido {dto.order_id} no encontrado")
 
+        self._authorize_transition(order, dto)
+
         if order.order_type == OrderType.SERVICE:
             ServiceOrderStateMachine.transition(order.status, dto.target_status)
         else:
             OrderStateMachine.transition(order.status, dto.target_status)
-        self._authorize_transition(order, dto)
 
         return self._order_repository.update_status(dto.order_id, dto.target_status)
 

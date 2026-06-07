@@ -48,8 +48,7 @@ def test_admin_commissions_list_returns_store_sales_and_driver_commissions():
             DailySalesReport,
             DriverCommission,
         )
-        from features.stores.domain.entities import StoreStatus
-        from features.stores.infrastructure.models import Store
+        from tests.gis_helpers import create_test_store
 
         super_admin = CustomUser.objects.create_user(
             username="superadmin",
@@ -69,11 +68,7 @@ def test_admin_commissions_list_returns_store_sales_and_driver_commissions():
             password="pass123",
             role=UserRole.DRIVER.value,
         )
-        store = Store.objects.create(
-            name="Tienda Test",
-            owner=merchant_user,
-            status=StoreStatus.OPEN.value,
-        )
+        store = create_test_store(merchant_user)
 
         DailySalesReport.objects.create(
             report_date="2026-06-01",
@@ -144,8 +139,7 @@ def test_admin_commissions_export_returns_csv():
             DailySalesReport,
             DriverCommission,
         )
-        from features.stores.domain.entities import StoreStatus
-        from features.stores.infrastructure.models import Store
+        from tests.gis_helpers import create_test_store
 
         super_admin = CustomUser.objects.create_user(
             username="superadmin",
@@ -165,11 +159,7 @@ def test_admin_commissions_export_returns_csv():
             password="pass123",
             role=UserRole.DRIVER.value,
         )
-        store = Store.objects.create(
-            name="Tienda Test",
-            owner=merchant_user,
-            status=StoreStatus.OPEN.value,
-        )
+        store = create_test_store(merchant_user)
 
         DailySalesReport.objects.create(
             report_date="2026-06-01",

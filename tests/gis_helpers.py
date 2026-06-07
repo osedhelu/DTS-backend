@@ -30,6 +30,22 @@ def ci_postgis_enabled() -> bool:
     return os.environ.get("CI") == "true" and gdal_available()
 
 
+def create_test_store(owner, *, name: str = "Tienda Test", status=None):
+    """Crea Store con location PostGIS obligatoria."""
+    from features.stores.domain.entities import StoreStatus
+    from features.stores.domain.value_objects import GeoLocation
+    from features.stores.infrastructure.models import Store
+
+    if status is None:
+        status = StoreStatus.OPEN
+    status_value = status.value if hasattr(status, "value") else status
+
+    store = Store(name=name, owner=owner, status=status_value)
+    store.set_location(GeoLocation(latitude=4.711, longitude=-74.072))
+    store.save()
+    return store
+
+
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 POSTGIS_DATABASE = {

@@ -296,8 +296,9 @@ def test_any_status_change_dispatches_push(mock_delay):
     reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
 )
 @pytest.mark.django_db
+@patch("features.delivery.infrastructure.tasks.assign_driver_task.delay")
 @patch("features.notifications.infrastructure.tasks.dispatch_order_push_task.delay")
-def test_signal_push_new_order_to_drivers(mock_delay):
+def test_signal_push_new_order_to_drivers(mock_dispatch, mock_assign):
     with override_settings(
         DATABASES=POSTGIS_DATABASE,
         INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
@@ -341,10 +342,13 @@ def test_signal_push_new_order_to_drivers(mock_delay):
         order.status = OrderStatus.READY_FOR_PICKUP
         order.save(update_fields=["status", "updated_at"])
 
-        mock_delay.assert_called_once_with(order.id, OrderStatus.READY_FOR_PICKUP)
+        mock_dispatch.assert_called_once_with(order.id, OrderStatus.READY_FOR_PICKUP)
+        mock_assign.assert_called_once_with(order.id)
 
-        mock_delay.reset_mock()
+        mock_dispatch.reset_mock()
+        mock_assign.reset_mock()
         order.status = OrderStatus.SEARCHING_DRIVER
         order.save(update_fields=["status", "updated_at"])
 
-        mock_delay.assert_not_called()
+        mock_dispatch.assert_not_called()
+        mock_assign.assert_not_called()
