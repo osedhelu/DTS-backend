@@ -1,3 +1,5 @@
+from django.db import models
+
 from features.products.domain.entities import (
     Category,
     Product,
@@ -103,6 +105,23 @@ class DjangoCategoryRepository:
             }
             for root in roots
         ]
+
+    def update(self, category_id: int, data: dict) -> Category:
+        model = CategoryModel.objects.get(pk=category_id)
+        model.name = data["name"]
+        model.save(update_fields=["name"])
+        return _category_to_entity(model)
+
+    def delete(self, category_id: int) -> None:
+        CategoryModel.objects.filter(pk=category_id).delete()
+
+    def count_products(self, category_id: int) -> int:
+        return ProductModel.objects.filter(
+            models.Q(category_id=category_id) | models.Q(subcategory_id=category_id)
+        ).count()
+
+    def count_subcategories(self, category_id: int) -> int:
+        return CategoryModel.objects.filter(parent_id=category_id).count()
 
 
 class DjangoProductRepository:
@@ -230,5 +249,7 @@ class DjangoProductRepository:
             queryset = queryset.filter(category_id=category_id)
         if subcategory_id is not None:
             queryset = queryset.filter(subcategory_id=subcategory_id)
+        if search:
+            queryset = queryset.filter(name__icontains=search.strip())
 
         return [_product_to_entity(model) for model in queryset]

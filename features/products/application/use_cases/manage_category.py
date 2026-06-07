@@ -1,6 +1,12 @@
-from features.products.application.dto import CreateCategoryDTO, CreateSubcategoryDTO
+from features.products.application.dto import (
+    CreateCategoryDTO,
+    CreateSubcategoryDTO,
+    DeleteCategoryDTO,
+    UpdateCategoryDTO,
+)
 from features.products.domain.entities import Category
 from features.products.domain.exceptions import (
+    CategoryInUseError,
     CategoryNotFoundError,
     InvalidCategoryHierarchyError,
 )
@@ -56,3 +62,44 @@ class CreateSubcategoryUseCase(CreateCategoryUseCase):
                 "parent_id": dto.parent_id,
             }
         )
+
+
+class UpdateCategoryUseCase(CreateCategoryUseCase):
+    def execute(self, dto: UpdateCategoryDTO) -> Category:
+        self._ensure_store_owner(dto.store_id, dto.owner_id)
+
+        category = self._category_repository.get_by_id(dto.category_id)
+        if category is None or category.store_id != dto.store_id:
+            raise CategoryNotFoundError(f"Categoría {dto.category_id} no encontrada")
+
+        name = dto.name.strip()
+        if not name:
+            raise InvalidCategoryHierarchyError("El nombre de la categoría es obligatorio")
+
+        return self._category_repository.update(
+            dto.category_id,
+            {"name": name},
+        )
+
+
+class DeleteCategoryUseCase(CreateCategoryUseCase):
+    def execute(self, dto: DeleteCategoryDTO) -> None:
+        self._ensure_store_owner(dto.store_id, dto.owner_id)
+
+        category = self._category_repository.get_by_id(dto.category_id)
+        if category is None or category.store_id != dto.store_id:
+            raise CategoryNotFoundError(f"Categoría {dto.category_id} no encontrada")
+
+        if self._category_repository.count_products(dto.category_id) > 0:
+            raise CategoryInUseError(
+                "No se puede eliminar: hay productos asociados a esta categoría"
+            )
+
+        if not category.is_subcategory and self._category_repository.count_subcategories(
+            dto.category_id
+        ) > 0:
+            raise CategoryInUseError(
+                "Elimina primero las subcategorías de esta categoría"
+            )
+
+        self._category_repository.delete(dto.category_id)

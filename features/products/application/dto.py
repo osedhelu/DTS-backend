@@ -102,3 +102,18 @@ class CreateSubcategoryDTO:
     owner_id: int
     parent_id: int
     name: str
+
+
+@dataclass(frozen=True)
+class UpdateCategoryDTO:
+    store_id: int
+    owner_id: int
+    category_id: int
+    name: str
+
+
+@dataclass(frozen=True)
+class DeleteCategoryDTO:
+    store_id: int
+    owner_id: int
+    category_id: int

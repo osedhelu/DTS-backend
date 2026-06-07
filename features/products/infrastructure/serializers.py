@@ -181,3 +181,7 @@ class CreateCategorySerializer(serializers.Serializer):
 class CreateSubcategorySerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     parent_id = serializers.IntegerField()
+
+
+class UpdateCategorySerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)

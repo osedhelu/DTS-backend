@@ -13,6 +13,7 @@ from features.products.application.dto import (
     CreateServiceDTO,
     CreateSubcategoryDTO,
     DeactivateProductDTO,
+    UpdateCategoryDTO,
     UpdateProductStockDTO,
 )
 from features.products.domain.entities import ProductType
@@ -34,6 +35,7 @@ from features.products.infrastructure.serializers import (
     ProductSerializer,
     UpdateProductSerializer,
     UpdateStockSerializer,
+    UpdateCategorySerializer,
 )
 
 CategoryResponseSerializer = inline_serializer(
@@ -67,6 +69,7 @@ class StoreProductListCreateView(APIView):
         product_type = request.query_params.get("type")
         category_id = request.query_params.get("category")
         subcategory_id = request.query_params.get("subcategory")
+        search = request.query_params.get("search")
 
         parsed_type = ProductType(product_type) if product_type else None
         parsed_category = int(category_id) if category_id else None
@@ -78,6 +81,7 @@ class StoreProductListCreateView(APIView):
             product_type=parsed_type,
             category_id=parsed_category,
             subcategory_id=parsed_subcategory,
+            search=search,
         )
         return paginate_list(
             request,
@@ -398,3 +402,98 @@ class StoreCategoryListCreateView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+@extend_schema_view(
+    patch=extend_schema(
+        request=UpdateCategorySerializer,
+        responses={
+            200: CategoryResponseSerializer,
+            400: DetailErrorSerializer,
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+    delete=extend_schema(
+        responses={
+            204: None,
+            400: DetailErrorSerializer,
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
+class StoreCategoryDetailView(APIView):
+    permission_classes = [IsMerchant]
+
+    def patch(self, request, store_id: int, category_id: int):
+        from features.products.application.use_cases.manage_category import (
+            UpdateCategoryUseCase,
+        )
+        from features.products.infrastructure.repositories import DjangoCategoryRepository
+        from features.products.infrastructure.serializers import UpdateCategorySerializer
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        serializer = UpdateCategorySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            category = UpdateCategoryUseCase(
+                DjangoCategoryRepository(),
+                DjangoStoreRepository(),
+            ).execute(
+                UpdateCategoryDTO(
+                    store_id=store_id,
+                    owner_id=request.user.id,
+                    category_id=category_id,
+                    name=serializer.validated_data["name"],
+                )
+            )
+        except StoreNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except NotStoreOwnerError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except CategoryNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (InvalidCategoryHierarchyError, DomainValidationError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "id": category.id,
+                "name": category.name,
+                "store_id": category.store_id,
+                "parent_id": category.parent_id,
+            }
+        )
+
+    def delete(self, request, store_id: int, category_id: int):
+        from features.products.application.use_cases.manage_category import (
+            DeleteCategoryUseCase,
+        )
+        from features.products.application.dto import DeleteCategoryDTO
+        from features.products.domain.exceptions import CategoryInUseError
+        from features.products.infrastructure.repositories import DjangoCategoryRepository
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        try:
+            DeleteCategoryUseCase(
+                DjangoCategoryRepository(),
+                DjangoStoreRepository(),
+            ).execute(
+                DeleteCategoryDTO(
+                    store_id=store_id,
+                    owner_id=request.user.id,
+                    category_id=category_id,
+                )
+            )
+        except StoreNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except NotStoreOwnerError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except CategoryNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except CategoryInUseError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

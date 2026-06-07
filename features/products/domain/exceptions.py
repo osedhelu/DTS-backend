@@ -25,6 +25,10 @@ class InvalidCategoryHierarchyError(DomainValidationError):
     pass
 
 
+class CategoryInUseError(DomainValidationError):
+    pass
+
+
 class VariantsNotAllowedError(DomainValidationError):
     pass
 

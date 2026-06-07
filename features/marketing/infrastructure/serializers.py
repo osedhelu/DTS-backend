@@ -76,4 +76,4 @@ class BannerSerializer(serializers.ModelSerializer):
             "is_active",
             "sort_order",
         ]
-        read_only_fields = fields
+        read_only_fields = ["id"]

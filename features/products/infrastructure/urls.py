@@ -6,6 +6,7 @@ from features.products.infrastructure.product_catalog_views import (
     ProductVariantListView,
 )
 from features.products.infrastructure.views import (
+    StoreCategoryDetailView,
     StoreCategoryListCreateView,
     StoreProductDetailView,
     StoreProductListCreateView,
@@ -41,5 +42,10 @@ urlpatterns = [
         "<int:store_id>/categories/",
         StoreCategoryListCreateView.as_view(),
         name="store-categories-list-create",
+    ),
+    path(
+        "<int:store_id>/categories/<int:category_id>/",
+        StoreCategoryDetailView.as_view(),
+        name="store-categories-detail",
     ),
 ]

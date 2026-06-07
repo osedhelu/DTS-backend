@@ -16,6 +16,13 @@ class CouponViewSet(ModelViewSet):
     lookup_field = "pk"
 
 
+class BannerViewSet(ModelViewSet):
+    queryset = BannerModel.objects.all().order_by("sort_order", "id")
+    serializer_class = BannerSerializer
+    permission_classes = [IsSuperAdmin]
+    lookup_field = "pk"
+
+
 @extend_schema_view(
     get=extend_schema(responses={200: BannerSerializer(many=True)}),
 )
