@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 
 from features.accounts.domain.entities import UserRole
 from features.accounts.infrastructure.models import CustomUser
+from tests.gis_helpers import postgis_tests_available
 
 
 @pytest.fixture
@@ -30,15 +31,23 @@ def merchant_user(db):
 @pytest.fixture
 def store(db, merchant_user):
     from features.stores.domain.entities import StoreStatus
+    from features.stores.domain.value_objects import GeoLocation
     from features.stores.infrastructure.models import Store
 
-    return Store.objects.create(
+    store = Store(
         name="Tienda Test",
         owner=merchant_user,
         status=StoreStatus.OPEN.value,
     )
+    store.set_location(GeoLocation(latitude=4.711, longitude=-74.072))
+    store.save()
+    return store
 
 
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/PostGIS requerido. CI instala libgdal-dev; local: brew install gdal geos",
+)
 @pytest.mark.django_db
 def test_admin_metrics_returns_sales_active_stores_and_delivery_time(
     super_admin, store, merchant_user
@@ -73,6 +82,10 @@ def test_admin_metrics_returns_sales_active_stores_and_delivery_time(
     assert any(point["total"] != "0" for point in payload["sales_series"])
 
 
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/PostGIS requerido. CI instala libgdal-dev; local: brew install gdal geos",
+)
 @pytest.mark.django_db
 def test_admin_metrics_forbidden_for_merchant(merchant_user):
     client = APIClient()

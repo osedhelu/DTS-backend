@@ -1,4 +1,7 @@
+import pytest
 from django.urls import reverse
+
+from tests.gis_helpers import postgis_tests_available
 
 
 API_V1_PREFIX = "/api/v1/"
@@ -8,6 +11,9 @@ NAMED_API_ROUTES: tuple[tuple[str, tuple], ...] = (
     ("swagger", ()),
     ("accounts-register", ()),
     ("accounts-login", ()),
+    ("accounts-merchant-register", ()),
+    ("accounts-verify-email", ()),
+    ("accounts-resend-verification", ()),
     ("accounts-device-token", ()),
     ("accounts-admin-dashboard", ()),
     ("stores-list-create", ()),
@@ -22,6 +28,10 @@ NAMED_API_ROUTES: tuple[tuple[str, tuple], ...] = (
 )
 
 
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/PostGIS requerido para resolver rutas del API completo",
+)
 def test_api_version_prefix():
     for route_name, args in NAMED_API_ROUTES:
         url = reverse(route_name, args=args)
@@ -30,6 +40,10 @@ def test_api_version_prefix():
         )
 
 
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/PostGIS requerido para resolver rutas del API completo",
+)
 def test_api_v1_root_is_not_empty():
     url = reverse("schema")
     assert url == f"{API_V1_PREFIX}schema/"

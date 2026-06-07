@@ -1,7 +1,9 @@
 import yaml
+import pytest
 from django.urls import reverse
-from drf_spectacular.generators import SchemaGenerator
 from rest_framework import status
+
+from tests.gis_helpers import postgis_tests_available
 
 
 EXPECTED_PATHS = (
@@ -14,6 +16,10 @@ EXPECTED_PATHS = (
 )
 
 
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/PostGIS requerido para cargar el schema completo",
+)
 def test_schema_generates(api_client):
     response = api_client.get(reverse("schema"))
     assert response.status_code == status.HTTP_200_OK
@@ -38,7 +44,13 @@ def test_schema_generates(api_client):
     assert tracking_get["tags"] == ["delivery"]
 
 
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/PostGIS requerido para cargar el schema completo",
+)
 def test_schema_generator_produces_valid_document():
+    from drf_spectacular.generators import SchemaGenerator
+
     schema = SchemaGenerator().get_schema(request=None, public=True)
 
     assert schema is not None
