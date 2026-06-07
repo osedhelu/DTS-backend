@@ -12,12 +12,14 @@ from features.marketing.application.use_cases.manage_store_promotion import (
     DeactivateStorePromotionDTO,
     DeactivateStorePromotionUseCase,
     ListStorePromotionsUseCase,
-    StorePromotionNotFoundError,
     UpdateStorePromotionDTO,
     UpdateStorePromotionUseCase,
 )
 from features.marketing.domain.entities import DiscountType
-from features.marketing.domain.exceptions import InvalidStorePromotionError
+from features.marketing.domain.exceptions import (
+    InvalidStorePromotionError,
+    StorePromotionNotFoundError,
+)
 from features.products.domain.exceptions import ProductNotFoundError
 from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
 from features.marketing.infrastructure.store_promotion_serializers import (

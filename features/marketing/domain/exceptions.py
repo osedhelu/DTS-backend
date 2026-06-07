@@ -19,3 +19,7 @@ class InvalidStorePromotionError(DomainValidationError):
 
 class StorePromotionNotApplicableError(DomainValidationError):
     pass
+
+
+class StorePromotionNotFoundError(DomainValidationError):
+    pass

@@ -46,10 +46,6 @@ class DeactivateStorePromotionDTO:
     owner_id: int
 
 
-class StorePromotionNotFoundError(InvalidStorePromotionError):
-    pass
-
-
 class _StorePromotionOwnershipMixin:
     def _ensure_store_owner(self, store_id: int, owner_id: int) -> None:
         store = self._store_repository.get_by_id(store_id)
