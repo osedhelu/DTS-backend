@@ -16,6 +16,7 @@ def _to_entity(model: StoreModel) -> Store:
         description=model.description,
         phone=model.phone,
         logo_url=model.logo.url if model.logo else "",
+        is_active=model.is_active,
     )
 
 
@@ -40,11 +41,24 @@ class DjangoStoreRepository:
         except StoreModel.DoesNotExist:
             return None
 
-    def list_all(self, status: StoreStatus | None = None) -> list[Store]:
+    def list_all(
+        self,
+        status: StoreStatus | None = None,
+        *,
+        active_only: bool = True,
+    ) -> list[Store]:
         queryset = StoreModel.objects.all().order_by("name")
+        if active_only:
+            queryset = queryset.filter(is_active=True)
         if status is not None:
             queryset = queryset.filter(status=status.value)
         return [_to_entity(model) for model in queryset]
+
+    def set_active(self, store_id: int, is_active: bool) -> Store:
+        model = StoreModel.objects.get(pk=store_id)
+        model.is_active = is_active
+        model.save(update_fields=["is_active", "updated_at"])
+        return _to_entity(model)
 
     def update_status(self, store_id: int, status: StoreStatus) -> Store:
         model = StoreModel.objects.get(pk=store_id)

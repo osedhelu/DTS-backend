@@ -35,6 +35,7 @@ class Store(models.Model):
     description = models.TextField(blank=True, default="")
     phone = models.CharField(max_length=30, blank=True, default="")
     logo = models.ImageField(upload_to=store_logo_upload_to, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

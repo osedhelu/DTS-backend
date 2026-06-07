@@ -26,6 +26,7 @@ class Store:
     description: str = ""
     phone: str = ""
     logo_url: str = ""
+    is_active: bool = True
 
     def open(self) -> None:
         self.status = StoreStatus.OPEN

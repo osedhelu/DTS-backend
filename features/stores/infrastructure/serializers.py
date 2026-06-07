@@ -31,6 +31,7 @@ class StoreSerializer(serializers.Serializer):
             "phone": instance.phone,
             "logo_url": instance.logo_url,
             "is_open": instance.is_open,
+            "is_active": instance.is_active,
         }
 
 
