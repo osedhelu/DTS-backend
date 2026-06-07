@@ -158,6 +158,12 @@ class StoreProductListCreateView(APIView):
 
 
 @extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: ProductDetailSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
     patch=extend_schema(
         request=UpdateProductSerializer,
         responses={
@@ -170,6 +176,26 @@ class StoreProductListCreateView(APIView):
 )
 class StoreProductDetailView(APIView):
     permission_classes = [IsMerchant]
+
+    def get(self, request, store_id: int, product_id: int):
+        from features.products.domain.entities import ProductDetails
+        from features.products.infrastructure.repositories import DjangoProductRepository
+
+        product_repository = DjangoProductRepository()
+        product = product_repository.get_by_id(product_id)
+        if product is None or product.store_id != store_id:
+            return Response(
+                {"detail": "Producto no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        details = ProductDetails(
+            product=product,
+            variants=product_repository.list_variants(product_id),
+            ingredients=product_repository.list_ingredients(product_id),
+            images=product_repository.list_images(product_id),
+        )
+        return Response(ProductDetailSerializer(details).data)
 
     def patch(self, request, store_id: int, product_id: int):
         from features.products.application.dto import (

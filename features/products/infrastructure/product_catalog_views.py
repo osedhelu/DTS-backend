@@ -175,6 +175,7 @@ class ProductIngredientListView(APIView):
 
 
 @extend_schema_view(
+    get=extend_schema(responses={200: ProductImageSerializer(many=True)}),
     post=extend_schema(
         request=UploadProductImageSerializer,
         responses={201: ProductImageSerializer, 400: DetailErrorSerializer},
@@ -183,6 +184,29 @@ class ProductIngredientListView(APIView):
 class ProductImageUploadView(APIView):
     permission_classes = [IsMerchant]
     parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request, store_id: int, product_id: int):
+        from features.products.infrastructure.repositories import DjangoProductRepository
+
+        repository = DjangoProductRepository()
+        product = repository.get_by_id(product_id)
+        if product is None or product.store_id != store_id:
+            return Response(
+                {"detail": "Producto no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        images = repository.list_images(product_id)
+        return Response(
+            [
+                {
+                    "id": image.id,
+                    "url": image.image_path,
+                    "is_primary": image.is_primary,
+                }
+                for image in images
+            ]
+        )
 
     def post(self, request, store_id: int, product_id: int):
         from features.products.application.use_cases.update_product import (
