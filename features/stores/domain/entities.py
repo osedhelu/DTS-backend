@@ -23,6 +23,9 @@ class Store:
     latitude: float | None = None
     longitude: float | None = None
     address: str = ""
+    description: str = ""
+    phone: str = ""
+    logo_url: str = ""
 
     def open(self) -> None:
         self.status = StoreStatus.OPEN

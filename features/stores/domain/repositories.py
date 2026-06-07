@@ -11,3 +11,10 @@ class StoreRepository(Protocol):
     def list_all(self, status: StoreStatus | None = None) -> list[Store]: ...
 
     def update_status(self, store_id: int, status: StoreStatus) -> Store: ...
+
+    def update_profile(
+        self,
+        store_id: int,
+        data: dict,
+        logo_file: object | None = None,
+    ) -> Store: ...

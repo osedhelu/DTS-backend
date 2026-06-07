@@ -7,6 +7,12 @@ from features.stores.domain.entities import StoreStatus, StoreVertical
 from features.stores.domain.value_objects import GeoLocation
 
 
+def store_logo_upload_to(instance: "Store", filename: str) -> str:
+    extension = filename.rsplit(".", 1)[-1]
+    store_key = instance.pk or "new"
+    return f"stores/{store_key}/logo.{extension}"
+
+
 class Store(models.Model):
     owner = models.ForeignKey(
         CustomUser,
@@ -26,6 +32,9 @@ class Store(models.Model):
     )
     location = gis_models.PointField(srid=4326)
     address = models.TextField(blank=True)
+    description = models.TextField(blank=True, default="")
+    phone = models.CharField(max_length=30, blank=True, default="")
+    logo = models.ImageField(upload_to=store_logo_upload_to, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

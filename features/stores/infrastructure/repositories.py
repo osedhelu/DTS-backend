@@ -13,6 +13,9 @@ def _to_entity(model: StoreModel) -> Store:
         latitude=model.latitude,
         longitude=model.longitude,
         address=model.address,
+        description=model.description,
+        phone=model.phone,
+        logo_url=model.logo.url if model.logo else "",
     )
 
 
@@ -47,4 +50,24 @@ class DjangoStoreRepository:
         model = StoreModel.objects.get(pk=store_id)
         model.status = status
         model.save(update_fields=["status", "updated_at"])
+        return _to_entity(model)
+
+    def update_profile(
+        self,
+        store_id: int,
+        data: dict,
+        logo_file: object | None = None,
+    ) -> Store:
+        model = StoreModel.objects.get(pk=store_id)
+        update_fields = ["updated_at"]
+
+        for field, value in data.items():
+            setattr(model, field, value)
+            update_fields.append(field)
+
+        if logo_file is not None:
+            model.logo = logo_file
+            update_fields.append("logo")
+
+        model.save(update_fields=update_fields)
         return _to_entity(model)

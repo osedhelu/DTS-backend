@@ -18,3 +18,15 @@ class UpdateStoreStatusDTO:
     store_id: int
     owner_id: int
     status: StoreStatus
+
+
+@dataclass(frozen=True)
+class UpdateStoreProfileDTO:
+    store_id: int
+    owner_id: int
+    name: str | None = None
+    description: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    status: StoreStatus | None = None
+    logo_file: object | None = None
