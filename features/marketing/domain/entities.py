@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from features.marketing.domain.exceptions import InvalidCouponError
+from features.marketing.domain.exceptions import InvalidCouponError, InvalidStorePromotionError
 
 
 class DiscountType(StrEnum):
@@ -51,3 +51,30 @@ class Banner:
     is_active: bool = True
     sort_order: int = 0
     id: int | None = None
+
+
+@dataclass
+class StorePromotion:
+    store_id: int
+    name: str
+    discount_type: DiscountType
+    discount_value: Decimal
+    product_id: int | None = None
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+    is_active: bool = True
+    id: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise InvalidStorePromotionError("El nombre de la promoción es obligatorio")
+        if self.discount_value <= 0:
+            raise InvalidStorePromotionError("El valor de descuento debe ser positivo")
+        if self.discount_type == DiscountType.PERCENTAGE and self.discount_value > 100:
+            raise InvalidStorePromotionError("El descuento porcentual no puede superar 100")
+        if (
+            self.valid_from is not None
+            and self.valid_until is not None
+            and self.valid_until < self.valid_from
+        ):
+            raise InvalidStorePromotionError("valid_until debe ser posterior a valid_from")

@@ -11,3 +11,11 @@ class InvalidCouponError(DomainValidationError):
 
 class CouponNotApplicableError(DomainValidationError):
     pass
+
+
+class InvalidStorePromotionError(DomainValidationError):
+    pass
+
+
+class StorePromotionNotApplicableError(DomainValidationError):
+    pass

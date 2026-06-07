@@ -1,5 +1,5 @@
-from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -120,3 +120,60 @@ class StoreDetailView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(StoreSerializer(store).data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: inline_serializer(
+                name="MerchantDashboard",
+                fields={
+                    "store_id": serializers.IntegerField(),
+                    "period_days": serializers.IntegerField(),
+                    "total_sales": serializers.DecimalField(max_digits=14, decimal_places=2),
+                    "order_count": serializers.IntegerField(),
+                    "orders_today": serializers.IntegerField(),
+                    "orders_this_week": serializers.IntegerField(),
+                    "average_ticket": serializers.DecimalField(max_digits=14, decimal_places=2),
+                    "platform_commission_rate": serializers.DecimalField(
+                        max_digits=5,
+                        decimal_places=4,
+                    ),
+                    "platform_commission": serializers.DecimalField(
+                        max_digits=14,
+                        decimal_places=2,
+                    ),
+                    "net_earnings": serializers.DecimalField(max_digits=14, decimal_places=2),
+                    "active_products": serializers.IntegerField(),
+                    "sales_series": serializers.ListField(child=serializers.DictField()),
+                    "top_products": serializers.ListField(child=serializers.DictField()),
+                },
+            ),
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
+class MerchantDashboardView(APIView):
+    permission_classes = [IsMerchant]
+
+    def get(self, request, store_id: int):
+        from features.stores.application.use_cases.get_merchant_dashboard import (
+            GetMerchantDashboardUseCase,
+        )
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        days = int(request.query_params.get("days", 30))
+
+        try:
+            payload = GetMerchantDashboardUseCase(DjangoStoreRepository()).execute(
+                store_id=store_id,
+                owner_id=request.user.id,
+                days=days,
+            )
+        except StoreNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except NotStoreOwnerError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response(payload)
