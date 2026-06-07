@@ -237,6 +237,7 @@ class DjangoProductRepository:
         product_type: ProductType | None = None,
         category_id: int | None = None,
         subcategory_id: int | None = None,
+        search: str | None = None,
         active_only: bool = True,
     ) -> list[Product]:
         queryset = ProductModel.objects.filter(store_id=store_id).order_by("name")

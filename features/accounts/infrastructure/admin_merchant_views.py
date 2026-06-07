@@ -72,4 +72,8 @@ class AdminMerchantListView(APIView):
             email_verified=_parse_bool_param(request.query_params.get("email_verified")),
             user_is_active=_parse_bool_param(request.query_params.get("is_active")),
         )
-        return paginate_list(request, merchants, _serialize_row)
+        return paginate_list(
+            request,
+            merchants,
+            lambda page: [_serialize_row(row) for row in page],
+        )
