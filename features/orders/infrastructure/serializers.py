@@ -73,11 +73,16 @@ class CreateOrderSerializer(serializers.Serializer):
 class CreateServiceOrderSerializer(serializers.Serializer):
     store_id = serializers.IntegerField()
     items = CreateOrderItemSerializer(many=True)
-    service_address = serializers.CharField()
+    service_address = serializers.CharField(trim_whitespace=True)
     customer_notes = serializers.CharField(required=False, allow_blank=True, default="")
     scheduled_at = serializers.DateTimeField(required=False, allow_null=True)
     latitude = serializers.FloatField(required=False, allow_null=True)
     longitude = serializers.FloatField(required=False, allow_null=True)
+
+    def validate_service_address(self, value: str) -> str:
+        if not value.strip():
+            raise serializers.ValidationError("La dirección del servicio es obligatoria")
+        return value.strip()
 
 
 class TransitionOrderSerializer(serializers.Serializer):

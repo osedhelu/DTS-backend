@@ -1,6 +1,7 @@
 import importlib
 
 import pytest
+from django.apps.config import AppConfig
 from django.apps import apps as django_apps
 from django.conf import settings
 
@@ -46,9 +47,8 @@ def test_all_registered_apps_are_loaded(settings):
 
     for entry in settings.INSTALLED_APPS:
         if entry.endswith("Config"):
-            module_path, class_name = entry.rsplit(".", 1)
-            config_class = getattr(importlib.import_module(module_path), class_name)
-            assert config_class.label in loaded_labels
+            config = AppConfig.create(entry)
+            assert config.label in loaded_labels
         else:
             assert entry in loaded_names
 

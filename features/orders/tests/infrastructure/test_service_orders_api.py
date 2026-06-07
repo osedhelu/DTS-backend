@@ -164,4 +164,4 @@ def test_service_order_requires_address(api_client):
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "dirección" in response.data["detail"].lower()
+        assert "dirección" in str(response.data).lower()
