@@ -54,6 +54,17 @@ class DjangoStoreRepository:
             queryset = queryset.filter(status=status.value)
         return [_to_entity(model) for model in queryset]
 
+    def list_by_owner(
+        self,
+        owner_id: int,
+        *,
+        active_only: bool = False,
+    ) -> list[Store]:
+        queryset = StoreModel.objects.filter(owner_id=owner_id).order_by("name")
+        if active_only:
+            queryset = queryset.filter(is_active=True)
+        return [_to_entity(model) for model in queryset]
+
     def set_active(self, store_id: int, is_active: bool) -> Store:
         model = StoreModel.objects.get(pk=store_id)
         model.is_active = is_active

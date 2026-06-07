@@ -177,3 +177,22 @@ class MerchantDashboardView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
 
         return Response(payload)
+
+
+@extend_schema_view(
+    get=extend_schema(responses={200: StoreSerializer(many=True)}),
+)
+class MerchantStoreListView(APIView):
+    permission_classes = [IsMerchant]
+
+    def get(self, request):
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+        from features.stores.infrastructure.serializers import StoreSerializer
+
+        repository = DjangoStoreRepository()
+        stores = repository.list_by_owner(request.user.id, active_only=False)
+        return paginate_list(
+            request,
+            stores,
+            lambda page: StoreSerializer(page, many=True).data,
+        )

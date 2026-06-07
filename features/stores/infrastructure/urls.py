@@ -8,12 +8,14 @@ from features.stores.infrastructure.admin_store_views import AdminStoreModeratio
 from features.stores.infrastructure.store_profile_views import StoreProfileView
 from features.stores.infrastructure.views import (
     MerchantDashboardView,
+    MerchantStoreListView,
     StoreDetailView,
     StoreListCreateView,
 )
 
 urlpatterns = [
     path("", StoreListCreateView.as_view(), name="stores-list-create"),
+    path("mine/", MerchantStoreListView.as_view(), name="stores-mine"),
     path("<int:store_id>/", StoreDetailView.as_view(), name="stores-detail"),
     path(
         "<int:store_id>/profile/",

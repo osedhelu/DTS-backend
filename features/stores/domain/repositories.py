@@ -15,6 +15,13 @@ class StoreRepository(Protocol):
         active_only: bool = True,
     ) -> list[Store]: ...
 
+    def list_by_owner(
+        self,
+        owner_id: int,
+        *,
+        active_only: bool = False,
+    ) -> list[Store]: ...
+
     def set_active(self, store_id: int, is_active: bool) -> Store: ...
 
     def update_status(self, store_id: int, status: StoreStatus) -> Store: ...
