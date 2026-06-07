@@ -23,3 +23,15 @@ class CategoryNotFoundError(DomainValidationError):
 
 class InvalidCategoryHierarchyError(DomainValidationError):
     pass
+
+
+class VariantsNotAllowedError(DomainValidationError):
+    pass
+
+
+class InvalidVariantError(DomainValidationError):
+    pass
+
+
+class InvalidIngredientError(DomainValidationError):
+    pass

@@ -1,6 +1,16 @@
-from features.products.domain.entities import Category, Product, ProductType
+from features.products.domain.entities import (
+    Category,
+    Product,
+    ProductImage,
+    ProductIngredient,
+    ProductType,
+    ProductVariant,
+)
 from features.products.infrastructure.models import Category as CategoryModel
 from features.products.infrastructure.models import Product as ProductModel
+from features.products.infrastructure.models import ProductImage as ProductImageModel
+from features.products.infrastructure.models import ProductIngredient as ProductIngredientModel
+from features.products.infrastructure.models import ProductVariant as ProductVariantModel
 
 
 def _category_to_entity(model: CategoryModel) -> Category:
@@ -26,6 +36,34 @@ def _product_to_entity(model: ProductModel) -> Product:
         is_active=model.is_active,
         requires_on_site_visit=model.requires_on_site_visit,
         duration_minutes=model.duration_minutes,
+    )
+
+
+def _variant_to_entity(model: ProductVariantModel) -> ProductVariant:
+    return ProductVariant(
+        id=model.id,
+        product_id=model.product_id,
+        name=model.name,
+        price=model.price,
+        sort_order=model.sort_order,
+    )
+
+
+def _ingredient_to_entity(model: ProductIngredientModel) -> ProductIngredient:
+    return ProductIngredient(
+        id=model.id,
+        product_id=model.product_id,
+        name=model.name,
+        is_allergen=model.is_allergen,
+    )
+
+
+def _image_to_entity(model: ProductImageModel) -> ProductImage:
+    return ProductImage(
+        id=model.id,
+        product_id=model.product_id,
+        image_path=model.image.url if model.image else "",
+        is_primary=model.is_primary,
     )
 
 
@@ -101,6 +139,77 @@ class DjangoProductRepository:
         model.stock = stock
         model.save(update_fields=["stock", "updated_at"])
         return _product_to_entity(model)
+
+    def update(self, product_id: int, data: dict) -> Product:
+        model = ProductModel.objects.get(pk=product_id)
+        update_fields = ["updated_at"]
+        for field in (
+            "name",
+            "price",
+            "description",
+            "stock",
+            "category_id",
+            "subcategory_id",
+            "duration_minutes",
+        ):
+            if field in data:
+                setattr(model, field, data[field])
+                update_fields.append(field)
+        model.save(update_fields=update_fields)
+        return _product_to_entity(model)
+
+    def list_variants(self, product_id: int) -> list[ProductVariant]:
+        return [
+            _variant_to_entity(model)
+            for model in ProductVariantModel.objects.filter(product_id=product_id)
+        ]
+
+    def replace_variants(self, product_id: int, variants: list[dict]) -> list[ProductVariant]:
+        ProductVariantModel.objects.filter(product_id=product_id).delete()
+        created: list[ProductVariant] = []
+        for index, variant in enumerate(variants):
+            model = ProductVariantModel.objects.create(
+                product_id=product_id,
+                name=variant["name"],
+                price=variant["price"],
+                sort_order=variant.get("sort_order", index),
+            )
+            created.append(_variant_to_entity(model))
+        return created
+
+    def list_ingredients(self, product_id: int) -> list[ProductIngredient]:
+        return [
+            _ingredient_to_entity(model)
+            for model in ProductIngredientModel.objects.filter(product_id=product_id)
+        ]
+
+    def replace_ingredients(self, product_id: int, ingredients: list[dict]) -> list[ProductIngredient]:
+        ProductIngredientModel.objects.filter(product_id=product_id).delete()
+        created: list[ProductIngredient] = []
+        for ingredient in ingredients:
+            model = ProductIngredientModel.objects.create(
+                product_id=product_id,
+                name=ingredient["name"],
+                is_allergen=ingredient.get("is_allergen", False),
+            )
+            created.append(_ingredient_to_entity(model))
+        return created
+
+    def list_images(self, product_id: int) -> list[ProductImage]:
+        return [
+            _image_to_entity(model)
+            for model in ProductImageModel.objects.filter(product_id=product_id)
+        ]
+
+    def add_image(self, product_id: int, image_file, *, is_primary: bool = False) -> ProductImage:
+        if is_primary:
+            ProductImageModel.objects.filter(product_id=product_id).update(is_primary=False)
+        model = ProductImageModel.objects.create(
+            product_id=product_id,
+            image=image_file,
+            is_primary=is_primary,
+        )
+        return _image_to_entity(model)
 
     def list_by_store(
         self,

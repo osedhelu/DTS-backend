@@ -2,7 +2,11 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
-from features.products.domain.exceptions import InvalidProductPriceError
+from features.products.domain.exceptions import (
+    InvalidIngredientError,
+    InvalidProductPriceError,
+    InvalidVariantError,
+)
 
 
 class ProductType(StrEnum):
@@ -79,3 +83,50 @@ class Product:
     @property
     def is_service(self) -> bool:
         return self.product_type == ProductType.SERVICE
+
+
+@dataclass
+class ProductVariant:
+    """Porción o tamaño con precio propio (ej. S/M/L/XL)."""
+
+    name: str
+    price: Decimal
+    sort_order: int = 0
+    id: int | None = None
+    product_id: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise InvalidVariantError("El nombre de la variante es obligatorio")
+        if self.price <= 0:
+            raise InvalidProductPriceError(
+                f"El precio de variante debe ser positivo, recibido: {self.price}"
+            )
+
+
+@dataclass
+class ProductIngredient:
+    name: str
+    is_allergen: bool = False
+    id: int | None = None
+    product_id: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise InvalidIngredientError("El nombre del ingrediente es obligatorio")
+
+
+@dataclass
+class ProductImage:
+    product_id: int
+    image_path: str
+    is_primary: bool = False
+    id: int | None = None
+
+
+@dataclass
+class ProductDetails:
+    product: Product
+    variants: list[ProductVariant]
+    ingredients: list[ProductIngredient]
+    images: list[ProductImage]

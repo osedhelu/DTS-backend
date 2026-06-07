@@ -93,3 +93,65 @@ class Product(models.Model):
     @property
     def tracks_stock(self) -> bool:
         return self.product_type == ProductType.PHYSICAL
+
+
+def product_image_upload_to(instance: "ProductImage", filename: str) -> str:
+    return f"products/{instance.product_id}/{filename}"
+
+
+class ProductVariant(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="variants",
+    )
+    name = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=12, decimal_places=2)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "products_product_variant"
+        ordering = ["sort_order", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.product.name} — {self.name}"
+
+
+class ProductIngredient(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="ingredients",
+    )
+    name = models.CharField(max_length=255)
+    is_allergen = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "products_product_ingredient"
+        ordering = ["name", "id"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    image = models.ImageField(upload_to=product_image_upload_to)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "products_product_image"
+        ordering = ["-is_primary", "id"]
+
+    def __str__(self) -> str:
+        return f"Imagen {self.pk} — {self.product.name}"

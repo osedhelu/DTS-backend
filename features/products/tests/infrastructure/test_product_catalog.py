@@ -1,0 +1,111 @@
+from decimal import Decimal
+from io import BytesIO
+from pathlib import Path
+
+import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test.utils import override_settings
+from PIL import Image
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from core.settings.apps_registry import build_installed_apps
+from features.accounts.domain.entities import UserRole
+from features.accounts.infrastructure.models import CustomUser
+from features.products.domain.entities import ProductType
+from tests.gis_helpers import POSTGIS_DATABASE, create_test_store, postgis_tests_available
+
+BACKEND_DIR = Path(__file__).resolve().parents[4]
+
+
+def _auth(api_client, user):
+    token = RefreshToken.for_user(user)
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+
+
+def _make_image(name: str = "burger.png") -> SimpleUploadedFile:
+    buffer = BytesIO()
+    Image.new("RGB", (32, 32), color="red").save(buffer, format="PNG")
+    buffer.seek(0)
+    return SimpleUploadedFile(name, buffer.read(), content_type="image/png")
+
+
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
+)
+@pytest.mark.django_db
+def test_product_image_model():
+    from features.products.infrastructure.models import Product, ProductImage
+
+    with override_settings(
+        DATABASES=POSTGIS_DATABASE,
+        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
+        MEDIA_ROOT=BACKEND_DIR / "test_media_models",
+    ):
+        merchant = CustomUser.objects.create_user(
+            username="merchant_image_model",
+            email="image_model@test.com",
+            password="securepass123",
+            role=UserRole.MERCHANT,
+        )
+        store = create_test_store(merchant)
+        product = Product.objects.create(
+            store=store,
+            name="Pizza margarita",
+            price=Decimal("29900.00"),
+            stock=5,
+            product_type=ProductType.PHYSICAL,
+        )
+
+        image = ProductImage.objects.create(
+            product=product,
+            image=_make_image(),
+            is_primary=True,
+        )
+
+        saved = ProductImage.objects.select_related("product").get(pk=image.pk)
+        assert saved.product_id == product.pk
+        assert saved.is_primary is True
+        assert saved.image.name.startswith(f"products/{product.pk}/")
+
+
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
+)
+@pytest.mark.django_db
+def test_product_image_upload_api(api_client):
+    from features.products.infrastructure.models import Product, ProductImage
+
+    with override_settings(
+        DATABASES=POSTGIS_DATABASE,
+        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
+        MEDIA_ROOT=BACKEND_DIR / "test_media_api",
+    ):
+        merchant = CustomUser.objects.create_user(
+            username="merchant_image_api",
+            email="image_api@test.com",
+            password="securepass123",
+            role=UserRole.MERCHANT,
+        )
+        store = create_test_store(merchant)
+        product = Product.objects.create(
+            store=store,
+            name="Tacos al pastor",
+            price=Decimal("12000.00"),
+            stock=20,
+            product_type=ProductType.PHYSICAL,
+        )
+        _auth(api_client, merchant)
+
+        response = api_client.post(
+            f"/api/v1/stores/{store.pk}/products/{product.pk}/images/",
+            {"image": _make_image("tacos.png"), "is_primary": True},
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["is_primary"] is True
+        assert "url" in response.data
+        assert ProductImage.objects.filter(product=product).count() == 1

@@ -1,5 +1,10 @@
 from django.urls import path
 
+from features.products.infrastructure.product_catalog_views import (
+    ProductImageUploadView,
+    ProductIngredientListView,
+    ProductVariantListView,
+)
 from features.products.infrastructure.views import (
     StoreCategoryListCreateView,
     StoreProductDetailView,
@@ -16,6 +21,21 @@ urlpatterns = [
         "<int:store_id>/products/<int:product_id>/",
         StoreProductDetailView.as_view(),
         name="store-products-detail",
+    ),
+    path(
+        "<int:store_id>/products/<int:product_id>/variants/",
+        ProductVariantListView.as_view(),
+        name="store-product-variants",
+    ),
+    path(
+        "<int:store_id>/products/<int:product_id>/ingredients/",
+        ProductIngredientListView.as_view(),
+        name="store-product-ingredients",
+    ),
+    path(
+        "<int:store_id>/products/<int:product_id>/images/",
+        ProductImageUploadView.as_view(),
+        name="store-product-images",
     ),
     path(
         "<int:store_id>/categories/",

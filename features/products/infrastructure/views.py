@@ -21,6 +21,7 @@ from features.products.domain.exceptions import (
     DomainValidationError,
     InvalidCategoryHierarchyError,
     ProductNotFoundError,
+    VariantsNotAllowedError,
 )
 from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
 from features.products.infrastructure.serializers import (
@@ -29,7 +30,9 @@ from features.products.infrastructure.serializers import (
     CreateProductSerializer,
     CreateServiceSerializer,
     CreateSubcategorySerializer,
+    ProductDetailSerializer,
     ProductSerializer,
+    UpdateProductSerializer,
     UpdateStockSerializer,
 )
 
@@ -156,15 +159,9 @@ class StoreProductListCreateView(APIView):
 
 @extend_schema_view(
     patch=extend_schema(
-        request=inline_serializer(
-            name="UpdateProduct",
-            fields={
-                "is_active": serializers.BooleanField(required=False),
-                "stock": serializers.IntegerField(required=False, min_value=0),
-            },
-        ),
+        request=UpdateProductSerializer,
         responses={
-            200: ProductSerializer,
+            200: ProductDetailSerializer,
             400: DetailErrorSerializer,
             403: DetailErrorSerializer,
             404: DetailErrorSerializer,
@@ -175,19 +172,27 @@ class StoreProductDetailView(APIView):
     permission_classes = [IsMerchant]
 
     def patch(self, request, store_id: int, product_id: int):
+        from features.products.application.dto import (
+            ProductIngredientInput,
+            ProductVariantInput,
+            UpdateProductDTO,
+        )
         from features.products.application.use_cases.manage_product import (
             DeactivateProductUseCase,
             UpdateProductStockUseCase,
         )
-        from features.products.infrastructure.repositories import DjangoProductRepository
-        from features.products.infrastructure.serializers import ProductSerializer
+        from features.products.application.use_cases.update_product import UpdateProductUseCase
+        from features.products.infrastructure.repositories import (
+            DjangoCategoryRepository,
+            DjangoProductRepository,
+        )
         from features.stores.infrastructure.repositories import DjangoStoreRepository
 
         product_repository = DjangoProductRepository()
         store_repository = DjangoStoreRepository()
 
         try:
-            if "stock" in request.data:
+            if set(request.data.keys()) == {"stock"}:
                 serializer = UpdateStockSerializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 use_case = UpdateProductStockUseCase(product_repository, store_repository)
@@ -198,34 +203,90 @@ class StoreProductDetailView(APIView):
                         stock=serializer.validated_data["stock"],
                     )
                 )
-            elif request.data.get("is_active") is False:
+                if product.store_id != store_id:
+                    return Response(
+                        {"detail": "El producto no pertenece a este comercio"},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+                return Response(ProductSerializer(product).data)
+
+            if request.data.get("is_active") is False and len(request.data) == 1:
                 use_case = DeactivateProductUseCase(product_repository, store_repository)
                 product = use_case.execute(
                     DeactivateProductDTO(product_id=product_id, owner_id=request.user.id)
                 )
-            else:
-                return Response(
-                    {
-                        "detail": "Use stock para inventario o is_active=false para desactivar"
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
+                if product.store_id != store_id:
+                    return Response(
+                        {"detail": "El producto no pertenece a este comercio"},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+                return Response(ProductSerializer(product).data)
+
+            serializer = UpdateProductSerializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
+
+            variants = None
+            if "variants" in data:
+                variants = [
+                    ProductVariantInput(
+                        name=item["name"],
+                        price=item["price"],
+                        sort_order=item.get("sort_order", 0),
+                    )
+                    for item in data["variants"]
+                ]
+
+            ingredients = None
+            if "ingredients" in data:
+                ingredients = [
+                    ProductIngredientInput(
+                        name=item["name"],
+                        is_allergen=item.get("is_allergen", False),
+                    )
+                    for item in data["ingredients"]
+                ]
+
+            details = UpdateProductUseCase(
+                product_repository,
+                DjangoCategoryRepository(),
+                store_repository,
+            ).execute(
+                UpdateProductDTO(
+                    product_id=product_id,
+                    owner_id=request.user.id,
+                    name=data.get("name"),
+                    price=data.get("price"),
+                    description=data.get("description"),
+                    stock=data.get("stock"),
+                    category_id=data.get("category_id"),
+                    subcategory_id=data.get("subcategory_id"),
+                    duration_minutes=data.get("duration_minutes"),
+                    variants=variants,
+                    ingredients=ingredients,
                 )
+            )
         except ProductNotFoundError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except StoreNotFoundError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except NotStoreOwnerError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
-        except DomainValidationError as exc:
+        except (
+            CategoryNotFoundError,
+            InvalidCategoryHierarchyError,
+            VariantsNotAllowedError,
+            DomainValidationError,
+        ) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        if product.store_id != store_id:
+        if details.product.store_id != store_id:
             return Response(
                 {"detail": "El producto no pertenece a este comercio"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(ProductSerializer(product).data)
+        return Response(ProductDetailSerializer(details).data)
 
 
 @extend_schema_view(
