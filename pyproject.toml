@@ -19,6 +19,7 @@ dependencies = [
     "gunicorn>=26.0.0",
     "whitenoise>=6.12.0",
     "pillow>=12.2.0",
+    "boto3>=1.43.24",
 ]
 
 [dependency-groups]
