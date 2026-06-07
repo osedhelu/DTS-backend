@@ -18,6 +18,8 @@ class StoreSerializer(serializers.Serializer):
     is_open = serializers.BooleanField(read_only=True)
 
     def to_representation(self, instance):
+        from core.media_urls import build_public_media_url
+
         return {
             "id": instance.id,
             "name": instance.name,
@@ -29,7 +31,7 @@ class StoreSerializer(serializers.Serializer):
             "address": instance.address,
             "description": instance.description,
             "phone": instance.phone,
-            "logo_url": instance.logo_url,
+            "logo_url": build_public_media_url(instance.logo_url),
             "is_open": instance.is_open,
             "is_active": instance.is_active,
         }

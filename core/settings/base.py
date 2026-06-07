@@ -53,6 +53,8 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+SERVE_MEDIA = env.bool("SERVE_MEDIA", default=DEBUG)
+MEDIA_PUBLIC_BASE_URL = env("MEDIA_PUBLIC_BASE_URL", default="")
 
 MEDIA_STORAGE_BACKEND = env("MEDIA_STORAGE_BACKEND", default="local")
 AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")

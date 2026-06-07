@@ -99,6 +99,8 @@ class ProductDetailSerializer(serializers.Serializer):
     images = ProductImageSerializer(many=True)
 
     def to_representation(self, instance):
+        from core.media_urls import build_public_media_url
+
         product = instance.product if hasattr(instance, "product") else instance
         variants = getattr(instance, "variants", [])
         ingredients = getattr(instance, "ingredients", [])
@@ -138,7 +140,7 @@ class ProductDetailSerializer(serializers.Serializer):
             "images": [
                 {
                     "id": image.id,
-                    "url": image.image_path,
+                    "url": build_public_media_url(image.image_path),
                     "is_primary": image.is_primary,
                 }
                 for image in images
