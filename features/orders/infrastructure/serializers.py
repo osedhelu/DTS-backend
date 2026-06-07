@@ -73,7 +73,7 @@ class CreateOrderSerializer(serializers.Serializer):
 class CreateServiceOrderSerializer(serializers.Serializer):
     store_id = serializers.IntegerField()
     items = CreateOrderItemSerializer(many=True)
-    service_address = serializers.CharField(trim_whitespace=True)
+    service_address = serializers.CharField(trim_whitespace=False, allow_blank=True)
     customer_notes = serializers.CharField(required=False, allow_blank=True, default="")
     scheduled_at = serializers.DateTimeField(required=False, allow_null=True)
     latitude = serializers.FloatField(required=False, allow_null=True)
