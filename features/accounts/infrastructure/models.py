@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
@@ -48,6 +50,7 @@ class CustomUser(AbstractUser):
         choices=[(role.value, role.value) for role in UserRole],
         default=UserRole.CUSTOMER,
     )
+    email_verified = models.BooleanField(default=False)
 
     objects = CustomUserManager()
 
@@ -187,3 +190,23 @@ class DeviceToken(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.username} — {self.platform}"
+
+
+class EmailVerificationToken(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="verification_tokens",
+    )
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "accounts_email_verification_token"
+        verbose_name = "token de verificación email"
+        verbose_name_plural = "tokens de verificación email"
+
+    def __str__(self) -> str:
+        return f"Token {self.token} — {self.user.email}"

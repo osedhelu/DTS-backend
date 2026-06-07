@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from features.accounts.domain.entities import UserRole
+from features.stores.domain.entities import StoreVertical
 
 
 @dataclass(frozen=True)
@@ -16,3 +17,18 @@ class RegisterUserDTO:
     license_number: str | None = None
     vehicle_type: str | None = None
     default_address: str | None = None
+
+
+@dataclass(frozen=True)
+class RegisterMerchantWithStoreDTO:
+    email: str
+    password: str
+    first_name: str
+    last_name: str
+    store_name: str
+    vertical: StoreVertical
+    category_template: str
+    phone: str
+    address: str = ""
+    latitude: float | None = None
+    longitude: float | None = None

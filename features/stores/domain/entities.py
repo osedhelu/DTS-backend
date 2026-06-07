@@ -7,12 +7,19 @@ class StoreStatus(StrEnum):
     CLOSED = "closed"
 
 
+class StoreVertical(StrEnum):
+    FOOD = "FOOD"
+    SERVICES = "SERVICES"
+    RETAIL = "RETAIL"
+
+
 @dataclass
 class Store:
     name: str
     owner_id: int
     id: int | None = None
     status: StoreStatus = StoreStatus.CLOSED
+    vertical: StoreVertical = StoreVertical.FOOD
     latitude: float | None = None
     longitude: float | None = None
     address: str = ""

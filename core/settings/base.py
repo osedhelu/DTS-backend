@@ -78,6 +78,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/min",
         "user": "600/min",
+        "resend_verification": "5/hour",
     },
 }
 
@@ -115,6 +116,7 @@ EMAIL_PORT = env.int("EMAIL_PORT", default=1025)
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
 EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@dts.local")
+WEB_URL = env("WEB_URL", default="http://localhost:3000")
 
 FCM_CREDENTIALS_PATH = env("FCM_CREDENTIALS_PATH", default=None)
 

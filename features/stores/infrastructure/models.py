@@ -3,7 +3,7 @@ from django.contrib.gis.geos import Point
 from django.db import models
 
 from features.accounts.infrastructure.models import CustomUser
-from features.stores.domain.entities import StoreStatus
+from features.stores.domain.entities import StoreStatus, StoreVertical
 from features.stores.domain.value_objects import GeoLocation
 
 
@@ -18,6 +18,11 @@ class Store(models.Model):
         max_length=10,
         choices=[(status.value, status.value) for status in StoreStatus],
         default=StoreStatus.CLOSED,
+    )
+    vertical = models.CharField(
+        max_length=10,
+        choices=[(vertical.value, vertical.value) for vertical in StoreVertical],
+        default=StoreVertical.FOOD,
     )
     location = gis_models.PointField(srid=4326)
     address = models.TextField(blank=True)

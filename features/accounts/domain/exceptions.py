@@ -15,3 +15,23 @@ class InvalidPhoneError(DomainValidationError):
 
 class DuplicateEmailError(DomainValidationError):
     pass
+
+
+class VerificationTokenExpiredError(DomainValidationError):
+    pass
+
+
+class VerificationTokenAlreadyUsedError(DomainValidationError):
+    pass
+
+
+class VerificationTokenNotFoundError(DomainValidationError):
+    pass
+
+
+class EmailAlreadyVerifiedError(DomainValidationError):
+    pass
+
+
+class InvalidCategoryTemplateError(DomainValidationError):
+    pass

@@ -52,3 +52,30 @@ class DeviceTokenResponseSerializer(serializers.Serializer):
     token = serializers.CharField()
     platform = serializers.CharField()
     is_active = serializers.BooleanField()
+
+
+class MerchantRegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(min_length=8, write_only=True)
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    store_name = serializers.CharField(max_length=255)
+    vertical = serializers.ChoiceField(choices=["FOOD", "SERVICES", "RETAIL"])
+    category_template = serializers.CharField(max_length=255)
+    phone = serializers.CharField(max_length=20)
+    address = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class MerchantRegisterResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    store_id = serializers.IntegerField()
+    detail = serializers.CharField()
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    token = serializers.UUIDField()
+
+
+class ResendVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()

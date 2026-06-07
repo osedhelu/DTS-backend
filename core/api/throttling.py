@@ -7,3 +7,7 @@ class AnonBurstThrottle(AnonRateThrottle):
 
 class UserBurstThrottle(UserRateThrottle):
     scope = "user"
+
+
+class ResendVerificationThrottle(AnonRateThrottle):
+    scope = "resend_verification"

@@ -1,4 +1,4 @@
-from features.stores.domain.entities import Store, StoreStatus
+from features.stores.domain.entities import Store, StoreStatus, StoreVertical
 from features.stores.domain.value_objects import GeoLocation
 from features.stores.infrastructure.models import Store as StoreModel
 
@@ -9,6 +9,7 @@ def _to_entity(model: StoreModel) -> Store:
         name=model.name,
         owner_id=model.owner_id,
         status=StoreStatus(model.status),
+        vertical=StoreVertical(model.vertical),
         latitude=model.latitude,
         longitude=model.longitude,
         address=model.address,
@@ -22,6 +23,7 @@ class DjangoStoreRepository:
             name=data["name"],
             status=data["status"],
             address=data.get("address", ""),
+            vertical=data.get("vertical", StoreVertical.FOOD),
         )
         store.set_location(
             GeoLocation(latitude=data["latitude"], longitude=data["longitude"])

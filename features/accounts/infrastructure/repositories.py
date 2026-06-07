@@ -22,6 +22,8 @@ class DjangoUserRepository:
             email=data["email"],
             password=data["password"],
             role=data["role"],
+            email_verified=True,
+            is_active=True,
         )
 
         role = data["role"]

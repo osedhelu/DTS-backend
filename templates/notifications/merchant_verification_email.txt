@@ -1,0 +1,13 @@
+Hola,
+
+Gracias por registrar {{ store_name }} en DTS Delivery.
+
+Confirma tu correo electrónico visitando el siguiente enlace:
+
+{{ verify_url }}
+
+El enlace expira en 24 horas.
+
+Si no creaste esta cuenta, ignora este mensaje.
+
+— Equipo DTS Delivery
