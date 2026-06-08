@@ -17,7 +17,7 @@ class ProductSerializer(serializers.Serializer):
     requires_on_site_visit = serializers.BooleanField(read_only=True)
     duration_minutes = serializers.IntegerField(allow_null=True, required=False)
     tracks_stock = serializers.BooleanField(read_only=True)
-    dynamic_values = serializers.DictField(child=serializers.CharField(), required=False)
+    dynamic_values = serializers.JSONField(required=False)
 
     def to_representation(self, instance):
         return {
@@ -45,10 +45,7 @@ class CreateProductSerializer(serializers.Serializer):
     category_id = serializers.IntegerField(required=False, allow_null=True)
     subcategory_id = serializers.IntegerField(required=False, allow_null=True)
     description = serializers.CharField(required=False, allow_blank=True, default="")
-    dynamic_values = serializers.DictField(
-        child=serializers.CharField(allow_blank=True),
-        required=False,
-    )
+    dynamic_values = serializers.JSONField(required=False)
 
 
 class UpdateStockSerializer(serializers.Serializer):
@@ -84,10 +81,7 @@ class UpdateProductSerializer(serializers.Serializer):
     duration_minutes = serializers.IntegerField(required=False, allow_null=True, min_value=1)
     variants = ProductVariantSerializer(many=True, required=False)
     ingredients = ProductIngredientSerializer(many=True, required=False)
-    dynamic_values = serializers.DictField(
-        child=serializers.CharField(allow_blank=True),
-        required=False,
-    )
+    dynamic_values = serializers.JSONField(required=False)
 
 
 class ProductDetailSerializer(serializers.Serializer):
@@ -179,10 +173,7 @@ class CreateServiceSerializer(serializers.Serializer):
     subcategory_id = serializers.IntegerField(required=False, allow_null=True)
     description = serializers.CharField(required=False, allow_blank=True, default="")
     duration_minutes = serializers.IntegerField(required=False, allow_null=True, min_value=1)
-    dynamic_values = serializers.DictField(
-        child=serializers.CharField(allow_blank=True),
-        required=False,
-    )
+    dynamic_values = serializers.JSONField(required=False)
 
 
 class CategoryTreeSerializer(serializers.Serializer):

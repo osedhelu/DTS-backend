@@ -39,7 +39,7 @@ def validate_product_dynamic_values(
     category_id: int | None,
     subcategory_id: int | None,
     raw_values,
-) -> dict[str, str]:
+) -> dict[str, str | list[str]]:
     field_config = resolve_product_field_config(
         category_repository,
         store_id=store_id,
