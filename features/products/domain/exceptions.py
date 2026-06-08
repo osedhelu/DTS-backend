@@ -39,3 +39,7 @@ class InvalidVariantError(DomainValidationError):
 
 class InvalidIngredientError(DomainValidationError):
     pass
+
+
+class InvalidDynamicFieldError(DomainValidationError):
+    pass

@@ -10,6 +10,8 @@ from features.products.domain.exceptions import (
     CategoryNotFoundError,
     InvalidCategoryHierarchyError,
 )
+from features.products.application.dynamic_field_validation import validate_field_config
+from features.products.domain.exceptions import InvalidDynamicFieldError
 from features.products.domain.repositories import CategoryRepository
 from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
 from features.stores.domain.repositories import StoreRepository
@@ -76,10 +78,14 @@ class UpdateCategoryUseCase(CreateCategoryUseCase):
         if not name:
             raise InvalidCategoryHierarchyError("El nombre de la categoría es obligatorio")
 
-        return self._category_repository.update(
-            dto.category_id,
-            {"name": name},
-        )
+        payload: dict = {"name": name}
+        if dto.field_config is not None:
+            try:
+                payload["field_config"] = validate_field_config(dto.field_config)
+            except InvalidDynamicFieldError as exc:
+                raise InvalidCategoryHierarchyError(str(exc)) from exc
+
+        return self._category_repository.update(dto.category_id, payload)
 
 
 class DeleteCategoryUseCase(CreateCategoryUseCase):

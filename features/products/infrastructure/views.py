@@ -129,6 +129,7 @@ class StoreProductListCreateView(APIView):
                         subcategory_id=data.get("subcategory_id"),
                         description=data.get("description", ""),
                         duration_minutes=data.get("duration_minutes"),
+                        dynamic_values=data.get("dynamic_values"),
                     )
                 )
             else:
@@ -149,6 +150,7 @@ class StoreProductListCreateView(APIView):
                         category_id=data.get("category_id"),
                         subcategory_id=data.get("subcategory_id"),
                         description=data.get("description", ""),
+                        dynamic_values=data.get("dynamic_values"),
                     )
                 )
         except StoreNotFoundError as exc:
@@ -294,6 +296,7 @@ class StoreProductDetailView(APIView):
                     duration_minutes=data.get("duration_minutes"),
                     variants=variants,
                     ingredients=ingredients,
+                    dynamic_values=data.get("dynamic_values"),
                 )
             )
         except ProductNotFoundError as exc:
@@ -447,6 +450,7 @@ class StoreCategoryDetailView(APIView):
                     owner_id=request.user.id,
                     category_id=category_id,
                     name=serializer.validated_data["name"],
+                    field_config=serializer.validated_data.get("field_config"),
                 )
             )
         except StoreNotFoundError as exc:
@@ -464,6 +468,7 @@ class StoreCategoryDetailView(APIView):
                 "name": category.name,
                 "store_id": category.store_id,
                 "parent_id": category.parent_id,
+                "field_config": category.field_config or {},
             }
         )
 

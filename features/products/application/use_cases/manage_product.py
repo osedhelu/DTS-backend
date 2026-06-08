@@ -4,6 +4,9 @@ from features.products.application.dto import (
     DeactivateProductDTO,
     UpdateProductStockDTO,
 )
+from features.products.application.dynamic_field_validation import (
+    validate_product_dynamic_values,
+)
 from features.products.domain.entities import Product, ProductType
 from features.products.domain.exceptions import (
     CategoryNotFoundError,
@@ -34,6 +37,13 @@ class CreateProductUseCase:
             category_id=dto.category_id,
             subcategory_id=dto.subcategory_id,
         )
+        dynamic_values = validate_product_dynamic_values(
+            self._category_repository,
+            store_id=dto.store_id,
+            category_id=dto.category_id,
+            subcategory_id=dto.subcategory_id,
+            raw_values=dto.dynamic_values,
+        )
 
         product = Product(
             name=dto.name.strip(),
@@ -44,6 +54,7 @@ class CreateProductUseCase:
             subcategory_id=dto.subcategory_id,
             description=dto.description,
             product_type=ProductType.PHYSICAL,
+            dynamic_values=dynamic_values,
         )
 
         return self._product_repository.create(
@@ -59,6 +70,7 @@ class CreateProductUseCase:
                 "requires_on_site_visit": product.requires_on_site_visit,
                 "duration_minutes": product.duration_minutes,
                 "is_active": product.is_active,
+                "dynamic_values": product.dynamic_values,
             }
         )
 
@@ -106,6 +118,13 @@ class CreateServiceUseCase(CreateProductUseCase):
             category_id=dto.category_id,
             subcategory_id=dto.subcategory_id,
         )
+        dynamic_values = validate_product_dynamic_values(
+            self._category_repository,
+            store_id=dto.store_id,
+            category_id=dto.category_id,
+            subcategory_id=dto.subcategory_id,
+            raw_values=dto.dynamic_values,
+        )
 
         product = Product(
             name=dto.name.strip(),
@@ -116,6 +135,7 @@ class CreateServiceUseCase(CreateProductUseCase):
             description=dto.description,
             product_type=ProductType.SERVICE,
             duration_minutes=dto.duration_minutes,
+            dynamic_values=dynamic_values,
         )
 
         return self._product_repository.create(
@@ -131,6 +151,7 @@ class CreateServiceUseCase(CreateProductUseCase):
                 "requires_on_site_visit": product.requires_on_site_visit,
                 "duration_minutes": product.duration_minutes,
                 "is_active": product.is_active,
+                "dynamic_values": product.dynamic_values,
             }
         )
 

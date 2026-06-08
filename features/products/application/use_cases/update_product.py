@@ -4,6 +4,9 @@ from features.products.application.dto import (
     UpdateProductDTO,
     UploadProductImageDTO,
 )
+from features.products.application.dynamic_field_validation import (
+    validate_product_dynamic_values,
+)
 from features.products.domain.catalog_rules import assert_variants_allowed
 from features.products.domain.entities import (
     Product,
@@ -104,6 +107,32 @@ class UpdateProductUseCase(_ProductOwnershipMixin):
             if product.product_type != ProductType.SERVICE:
                 raise DomainValidationError("duration_minutes solo aplica a servicios")
             update_data["duration_minutes"] = dto.duration_minutes
+
+        next_category_id = (
+            dto.category_id if dto.category_id is not None else product.category_id
+        )
+        next_subcategory_id = (
+            dto.subcategory_id
+            if dto.subcategory_id is not None
+            else product.subcategory_id
+        )
+        if (
+            dto.dynamic_values is not None
+            or dto.category_id is not None
+            or dto.subcategory_id is not None
+        ):
+            raw_values = (
+                dto.dynamic_values
+                if dto.dynamic_values is not None
+                else (product.dynamic_values or {})
+            )
+            update_data["dynamic_values"] = validate_product_dynamic_values(
+                self._category_repository,
+                store_id=product.store_id,
+                category_id=next_category_id,
+                subcategory_id=next_subcategory_id,
+                raw_values=raw_values,
+            )
 
         updated = (
             self._product_repository.update(dto.product_id, update_data)

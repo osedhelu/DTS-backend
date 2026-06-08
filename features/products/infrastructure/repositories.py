@@ -21,6 +21,7 @@ def _category_to_entity(model: CategoryModel) -> Category:
         name=model.name,
         store_id=model.store_id,
         parent_id=model.parent_id,
+        field_config=model.field_config or {},
     )
 
 
@@ -38,6 +39,7 @@ def _product_to_entity(model: ProductModel) -> Product:
         is_active=model.is_active,
         requires_on_site_visit=model.requires_on_site_visit,
         duration_minutes=model.duration_minutes,
+        dynamic_values=model.dynamic_values or {},
     )
 
 
@@ -75,6 +77,7 @@ class DjangoCategoryRepository:
             store_id=data["store_id"],
             name=data["name"],
             parent_id=data.get("parent_id"),
+            field_config=data.get("field_config") or {},
         )
         return _category_to_entity(model)
 
@@ -94,11 +97,13 @@ class DjangoCategoryRepository:
             {
                 "id": root.id,
                 "name": root.name,
+                "field_config": root.field_config or {},
                 "subcategories": [
                     {
                         "id": sub.id,
                         "name": sub.name,
                         "parent_id": sub.parent_id,
+                        "field_config": sub.field_config or {},
                     }
                     for sub in root.subcategories.all()
                 ],
@@ -108,8 +113,14 @@ class DjangoCategoryRepository:
 
     def update(self, category_id: int, data: dict) -> Category:
         model = CategoryModel.objects.get(pk=category_id)
-        model.name = data["name"]
-        model.save(update_fields=["name"])
+        update_fields = ["updated_at"]
+        if "name" in data:
+            model.name = data["name"]
+            update_fields.append("name")
+        if "field_config" in data:
+            model.field_config = data["field_config"]
+            update_fields.append("field_config")
+        model.save(update_fields=update_fields)
         return _category_to_entity(model)
 
     def delete(self, category_id: int) -> None:
@@ -138,6 +149,7 @@ class DjangoProductRepository:
             requires_on_site_visit=data.get("requires_on_site_visit", False),
             duration_minutes=data.get("duration_minutes"),
             is_active=data.get("is_active", True),
+            dynamic_values=data.get("dynamic_values") or {},
         )
         return _product_to_entity(model)
 
@@ -170,6 +182,7 @@ class DjangoProductRepository:
             "category_id",
             "subcategory_id",
             "duration_minutes",
+            "dynamic_values",
         ):
             if field in data:
                 setattr(model, field, data[field])

@@ -17,6 +17,7 @@ class ProductSerializer(serializers.Serializer):
     requires_on_site_visit = serializers.BooleanField(read_only=True)
     duration_minutes = serializers.IntegerField(allow_null=True, required=False)
     tracks_stock = serializers.BooleanField(read_only=True)
+    dynamic_values = serializers.DictField(child=serializers.CharField(), required=False)
 
     def to_representation(self, instance):
         return {
@@ -33,6 +34,7 @@ class ProductSerializer(serializers.Serializer):
             "requires_on_site_visit": instance.requires_on_site_visit,
             "duration_minutes": instance.duration_minutes,
             "tracks_stock": instance.tracks_stock,
+            "dynamic_values": instance.dynamic_values or {},
         }
 
 
@@ -43,6 +45,10 @@ class CreateProductSerializer(serializers.Serializer):
     category_id = serializers.IntegerField(required=False, allow_null=True)
     subcategory_id = serializers.IntegerField(required=False, allow_null=True)
     description = serializers.CharField(required=False, allow_blank=True, default="")
+    dynamic_values = serializers.DictField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+    )
 
 
 class UpdateStockSerializer(serializers.Serializer):
@@ -78,6 +84,10 @@ class UpdateProductSerializer(serializers.Serializer):
     duration_minutes = serializers.IntegerField(required=False, allow_null=True, min_value=1)
     variants = ProductVariantSerializer(many=True, required=False)
     ingredients = ProductIngredientSerializer(many=True, required=False)
+    dynamic_values = serializers.DictField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+    )
 
 
 class ProductDetailSerializer(serializers.Serializer):
@@ -120,6 +130,7 @@ class ProductDetailSerializer(serializers.Serializer):
             "requires_on_site_visit": product.requires_on_site_visit,
             "duration_minutes": product.duration_minutes,
             "tracks_stock": product.tracks_stock,
+            "dynamic_values": product.dynamic_values or {},
             "variants": [
                 {
                     "id": variant.id,
@@ -168,6 +179,10 @@ class CreateServiceSerializer(serializers.Serializer):
     subcategory_id = serializers.IntegerField(required=False, allow_null=True)
     description = serializers.CharField(required=False, allow_blank=True, default="")
     duration_minutes = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    dynamic_values = serializers.DictField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+    )
 
 
 class CategoryTreeSerializer(serializers.Serializer):
@@ -187,3 +202,4 @@ class CreateSubcategorySerializer(serializers.Serializer):
 
 class UpdateCategorySerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    field_config = serializers.DictField(required=False)

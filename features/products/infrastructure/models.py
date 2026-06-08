@@ -18,6 +18,7 @@ class Category(models.Model):
         blank=True,
         related_name="subcategories",
     )
+    field_config = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -76,6 +77,7 @@ class Product(models.Model):
     requires_on_site_visit = models.BooleanField(default=False)
     duration_minutes = models.PositiveIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    dynamic_values = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

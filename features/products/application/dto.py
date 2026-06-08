@@ -12,6 +12,7 @@ class CreateProductDTO:
     category_id: int | None = None
     subcategory_id: int | None = None
     description: str = ""
+    dynamic_values: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class CreateServiceDTO:
     category_id: int | None = None
     subcategory_id: int | None = None
     description: str = ""
+    dynamic_values: dict | None = None
     duration_minutes: int | None = None
 
 
@@ -65,6 +67,7 @@ class UpdateProductDTO:
     duration_minutes: int | None = None
     variants: list[ProductVariantInput] | None = None
     ingredients: list[ProductIngredientInput] | None = None
+    dynamic_values: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -110,6 +113,7 @@ class UpdateCategoryDTO:
     owner_id: int
     category_id: int
     name: str
+    field_config: dict | None = None
 
 
 @dataclass(frozen=True)
