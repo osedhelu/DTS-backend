@@ -4,7 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from core.openapi import DetailErrorSerializer
 from core.api.throttling import ResendVerificationThrottle
@@ -226,6 +226,15 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainPairSerializer
+
+
+@extend_schema_view(
+    post=extend_schema(
+        responses={200: inline_serializer(name="RefreshResponse", fields={"access": serializers.CharField()})},
+    ),
+)
+class RefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
 
 
 @extend_schema_view(
