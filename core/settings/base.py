@@ -1,4 +1,5 @@
 """Configuración base Django — T1.1.1+."""
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -92,6 +93,13 @@ REST_FRAMEWORK = {
         "user": "600/min",
         "resend_verification": "5/hour",
     },
+}
+
+SIMPLE_JWT = {
+    # Debe ser coherente con las cookies del BFF en web-admin
+    # (dts_access_token: 1h, dts_refresh_token: 7d).
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
 SPECTACULAR_SETTINGS = {
