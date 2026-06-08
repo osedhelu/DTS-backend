@@ -1,4 +1,12 @@
+import pytest
 from django.test import Client, override_settings
+
+from tests.gis_helpers import gdal_available
+
+pytestmark = pytest.mark.skipif(
+    not gdal_available(),
+    reason="GDAL requerido en local/CI para cargar apps GIS",
+)
 
 
 def test_serve_media_when_enabled(tmp_path):
