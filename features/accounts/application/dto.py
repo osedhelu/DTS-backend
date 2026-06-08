@@ -30,5 +30,5 @@ class RegisterMerchantWithStoreDTO:
     category_template: str
     phone: str
     address: str = ""
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float = 0.0
+    longitude: float = 0.0

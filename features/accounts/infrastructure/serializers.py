@@ -64,6 +64,8 @@ class MerchantRegisterSerializer(serializers.Serializer):
     category_template = serializers.CharField(max_length=255)
     phone = serializers.CharField(max_length=20)
     address = serializers.CharField(required=False, allow_blank=True, default="")
+    latitude = serializers.FloatField(min_value=-90, max_value=90)
+    longitude = serializers.FloatField(min_value=-180, max_value=180)
 
 
 class MerchantRegisterResponseSerializer(serializers.Serializer):

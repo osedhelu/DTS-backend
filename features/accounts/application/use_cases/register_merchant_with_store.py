@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -13,9 +13,8 @@ from features.accounts.infrastructure.models import CustomUser, MerchantProfile
 from features.products.application.category_templates import seed_store_categories
 from features.stores.domain.entities import StoreStatus
 from features.stores.domain.repositories import StoreRepository
+from features.stores.domain.value_objects import GeoLocation
 
-DEFAULT_LATITUDE = 4.7110
-DEFAULT_LONGITUDE = -74.0721
 TOKEN_TTL = timedelta(hours=24)
 
 
@@ -46,8 +45,7 @@ class RegisterMerchantWithStoreUseCase:
             raise DuplicateEmailError(f"El email {email.value} ya está registrado")
 
         username = self._generate_username(email.value)
-        latitude = dto.latitude if dto.latitude is not None else DEFAULT_LATITUDE
-        longitude = dto.longitude if dto.longitude is not None else DEFAULT_LONGITUDE
+        geo = GeoLocation(latitude=dto.latitude, longitude=dto.longitude)
 
         with transaction.atomic():
             user = CustomUser.objects.create_user(
@@ -70,8 +68,8 @@ class RegisterMerchantWithStoreUseCase:
                 {
                     "owner_id": user.id,
                     "name": dto.store_name.strip(),
-                    "latitude": latitude,
-                    "longitude": longitude,
+                    "latitude": geo.latitude,
+                    "longitude": geo.longitude,
                     "address": dto.address.strip(),
                     "status": StoreStatus.CLOSED,
                     "vertical": dto.vertical,

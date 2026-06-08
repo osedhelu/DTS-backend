@@ -129,6 +129,8 @@ class MerchantRegisterView(APIView):
                     category_template=data["category_template"],
                     phone=data["phone"],
                     address=data.get("address") or "",
+                    latitude=data["latitude"],
+                    longitude=data["longitude"],
                 )
             )
         except DuplicateEmailError as exc:

@@ -46,6 +46,8 @@ MERCHANT_REGISTER_PAYLOAD = {
     "vertical": "FOOD",
     "category_template": "Comida rápida",
     "phone": "+573001112233",
+    "latitude": 4.711,
+    "longitude": -74.0721,
 }
 
 ACCOUNTS_URLCONF = "features.accounts.tests.urls"

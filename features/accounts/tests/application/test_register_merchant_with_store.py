@@ -71,6 +71,8 @@ def test_merchant_register_creates_store_and_categories():
                 vertical=StoreVertical.FOOD,
                 category_template="Comida rápida",
                 phone="+573001112233",
+                latitude=4.711,
+                longitude=-74.0721,
             )
         )
 
@@ -84,6 +86,8 @@ def test_merchant_register_creates_store_and_categories():
         assert store.name == "Burger Ana"
         assert store.vertical == StoreVertical.FOOD
         assert store.owner_id == user.id
+        assert store.latitude == pytest.approx(4.711)
+        assert store.longitude == pytest.approx(-74.0721)
 
         categories = Category.objects.filter(store=store).order_by("name")
         assert categories.count() == 4
