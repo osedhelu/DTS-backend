@@ -24,9 +24,16 @@ class ProductSerializer(serializers.Serializer):
         allow_null=True,
         allow_blank=True,
     )
+    promotion_badge = serializers.CharField(
+        read_only=True,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
 
     def to_representation(self, instance):
         primary_urls = self.context.get("primary_image_urls") or {}
+        promotion_badges = self.context.get("promotion_badges") or {}
         return {
             "id": instance.id,
             "name": instance.name,
@@ -43,6 +50,7 @@ class ProductSerializer(serializers.Serializer):
             "tracks_stock": instance.tracks_stock,
             "dynamic_values": instance.dynamic_values or {},
             "primary_image_url": primary_urls.get(instance.id),
+            "promotion_badge": promotion_badges.get(instance.id),
         }
 
 

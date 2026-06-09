@@ -98,7 +98,7 @@ def resolve_field_config(
 def validate_dynamic_values(
     field_config: dict[str, FieldRule],
     raw_values: Any,
-) -> dict[str, str | list[str]]:
+) -> dict[str, str | list[str] | dict[str, Any]]:
     if not field_config:
         return {}
 
@@ -113,7 +113,7 @@ def validate_dynamic_values(
         names = ", ".join(sorted(extra_keys))
         raise InvalidDynamicFieldError(f"Parámetros no permitidos: {names}")
 
-    normalized: dict[str, str | list[str]] = {}
+    normalized: dict[str, str | list[str] | dict[str, Any]] = {}
     for key, rule in field_config.items():
         if key not in raw_values:
             raise InvalidDynamicFieldError(f"Falta el parámetro '{key}'")
@@ -129,6 +129,10 @@ def validate_dynamic_values(
             continue
 
         if mode == SINGLE:
+            if isinstance(value, dict):
+                raise InvalidDynamicFieldError(
+                    f"El parámetro '{key}' no admite precios por opción"
+                )
             if isinstance(value, list):
                 if len(value) != 1:
                     raise InvalidDynamicFieldError(
@@ -143,22 +147,15 @@ def validate_dynamic_values(
             normalized[key] = value
             continue
 
-        # multi — el producto elige qué opciones de la categoría ofrece
-        if isinstance(value, str):
-            value = [value]
-        if not isinstance(value, list) or not value:
+        selected = extract_multi_options(value)
+        if not selected:
             raise InvalidDynamicFieldError(
                 f"El parámetro '{key}' requiere al menos una opción seleccionada"
             )
 
-        selected: list[str] = []
         seen: set[str] = set()
-        for item in value:
-            if not isinstance(item, str):
-                raise InvalidDynamicFieldError(f"Valor inválido en '{key}'")
-            option = item.strip()
-            if not option:
-                continue
+        cleaned_selected: list[str] = []
+        for option in selected:
             if option not in (options or []):
                 allowed = ", ".join(options or [])
                 raise InvalidDynamicFieldError(
@@ -166,12 +163,57 @@ def validate_dynamic_values(
                 )
             if option not in seen:
                 seen.add(option)
-                selected.append(option)
+                cleaned_selected.append(option)
 
-        if not selected:
-            raise InvalidDynamicFieldError(
-                f"El parámetro '{key}' requiere al menos una opción seleccionada"
-            )
-        normalized[key] = selected
+        prices = extract_option_prices(value)
+        for option in prices:
+            if option not in cleaned_selected:
+                raise InvalidDynamicFieldError(
+                    f"Precio definido para '{option}' pero no está seleccionado en '{key}'"
+                )
+
+        if prices:
+            normalized[key] = {"options": cleaned_selected, "prices": prices}
+        else:
+            normalized[key] = cleaned_selected
 
     return normalized
+
+
+def extract_multi_options(value: str | list[str] | dict[str, Any]) -> list[str]:
+    if isinstance(value, dict):
+        raw_options = value.get("options", [])
+        if not isinstance(raw_options, list):
+            raise InvalidDynamicFieldError("options debe ser una lista")
+        return [str(option).strip() for option in raw_options if str(option).strip()]
+
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+
+    if isinstance(value, list):
+        return [str(option).strip() for option in value if str(option).strip()]
+
+    raise InvalidDynamicFieldError("Formato inválido para parámetro multi")
+
+
+def extract_option_prices(value: str | list[str] | dict[str, Any]) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+
+    raw_prices = value.get("prices")
+    if raw_prices in (None, {}):
+        return {}
+
+    if not isinstance(raw_prices, dict):
+        raise InvalidDynamicFieldError("prices debe ser un objeto JSON")
+
+    normalized: dict[str, str] = {}
+    for option, price in raw_prices.items():
+        if not isinstance(option, str) or not option.strip():
+            raise InvalidDynamicFieldError("Cada precio debe tener una opción válida")
+        if price in (None, ""):
+            continue
+        normalized[option.strip()] = str(price).strip()
+
+    return normalized
+

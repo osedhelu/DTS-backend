@@ -49,13 +49,26 @@ CategoryResponseSerializer = inline_serializer(
 )
 
 
-def _product_serializer_data(products, repository):
+def _product_serializer_data(products, repository, store_id: int | None = None):
     items = products if isinstance(products, list) else [products]
     primary_urls = repository.primary_image_urls_for_products([item.id for item in items])
+    promotion_badges: dict[int, str | None] = {}
+    if store_id is not None:
+        from features.marketing.infrastructure.product_promotion_badges import (
+            promotion_badges_for_products,
+        )
+
+        promotion_badges = promotion_badges_for_products(
+            store_id,
+            [item.id for item in items],
+        )
     serializer = ProductSerializer(
         products,
         many=isinstance(products, list),
-        context={"primary_image_urls": primary_urls},
+        context={
+            "primary_image_urls": primary_urls,
+            "promotion_badges": promotion_badges,
+        },
     )
     return serializer.data
 
@@ -96,7 +109,7 @@ class StoreProductListCreateView(APIView):
         )
 
         def serialize_page(page):
-            return _product_serializer_data(page, repository)
+            return _product_serializer_data(page, repository, store_id=store_id)
 
         return paginate_list(request, products, serialize_page)
 
@@ -172,7 +185,7 @@ class StoreProductListCreateView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
-            _product_serializer_data(product, product_repository),
+            _product_serializer_data(product, product_repository, store_id=store_id),
             status=status.HTTP_201_CREATED,
         )
 
@@ -254,7 +267,13 @@ class StoreProductDetailView(APIView):
                         {"detail": "El producto no pertenece a este comercio"},
                         status=status.HTTP_404_NOT_FOUND,
                     )
-                return Response(_product_serializer_data(product, product_repository))
+                return Response(
+                    _product_serializer_data(
+                        product,
+                        product_repository,
+                        store_id=store_id,
+                    )
+                )
 
             if request.data.get("is_active") is False and len(request.data) == 1:
                 use_case = DeactivateProductUseCase(product_repository, store_repository)
@@ -266,7 +285,13 @@ class StoreProductDetailView(APIView):
                         {"detail": "El producto no pertenece a este comercio"},
                         status=status.HTTP_404_NOT_FOUND,
                     )
-                return Response(_product_serializer_data(product, product_repository))
+                return Response(
+                    _product_serializer_data(
+                        product,
+                        product_repository,
+                        store_id=store_id,
+                    )
+                )
 
             serializer = UpdateProductSerializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)

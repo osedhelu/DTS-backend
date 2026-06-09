@@ -55,6 +55,8 @@ class StorePromotionDiscountCalculator:
         promotion: StorePromotion,
         *,
         product_id: int | None = None,
+        variant_id: int | None = None,
+        product_dynamic_values: dict | None = None,
         now: datetime | None = None,
     ) -> Decimal:
         if order_total <= 0:
@@ -67,6 +69,29 @@ class StorePromotionDiscountCalculator:
             raise StorePromotionNotApplicableError(
                 "La promoción no aplica a este producto"
             )
+
+        if promotion.variant_id is not None and promotion.variant_id != variant_id:
+            raise StorePromotionNotApplicableError(
+                "La promoción no aplica a esta variante"
+            )
+
+        if promotion.param_key is not None and promotion.param_value is not None:
+            if not product_dynamic_values:
+                raise StorePromotionNotApplicableError(
+                    "La promoción no aplica a este producto"
+                )
+            from features.products.domain.dynamic_fields import extract_multi_options
+
+            raw_param = product_dynamic_values.get(promotion.param_key)
+            if raw_param is None:
+                raise StorePromotionNotApplicableError(
+                    "La promoción no aplica a este producto"
+                )
+            selected = extract_multi_options(raw_param)
+            if promotion.param_value not in selected:
+                raise StorePromotionNotApplicableError(
+                    "La promoción no aplica a esta opción del producto"
+                )
 
         current_time = now or datetime.now(
             tz=promotion.valid_from.tzinfo if promotion.valid_from else None

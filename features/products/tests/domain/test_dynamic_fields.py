@@ -80,3 +80,22 @@ def test_validate_dynamic_values_requires_free_text():
     config = {"color": FREE_TEXT}
     with pytest.raises(InvalidDynamicFieldError):
         validate_dynamic_values(config, {"color": "  "})
+
+
+def test_validate_dynamic_values_multi_with_prices():
+    config = {"talla": {"mode": "multi", "options": ["S", "M", "L", "XL"]}}
+    values = validate_dynamic_values(
+        config,
+        {
+            "talla": {
+                "options": ["M", "XL"],
+                "prices": {"M": "25000", "XL": "29990"},
+            }
+        },
+    )
+    assert values == {
+        "talla": {
+            "options": ["M", "XL"],
+            "prices": {"M": "25000", "XL": "29990"},
+        }
+    }

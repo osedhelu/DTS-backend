@@ -60,6 +60,9 @@ class StorePromotion:
     discount_type: DiscountType
     discount_value: Decimal
     product_id: int | None = None
+    variant_id: int | None = None
+    param_key: str | None = None
+    param_value: str | None = None
     valid_from: datetime | None = None
     valid_until: datetime | None = None
     is_active: bool = True
@@ -72,6 +75,18 @@ class StorePromotion:
             raise InvalidStorePromotionError("El valor de descuento debe ser positivo")
         if self.discount_type == DiscountType.PERCENTAGE and self.discount_value > 100:
             raise InvalidStorePromotionError("El descuento porcentual no puede superar 100")
+        if self.variant_id is not None and self.product_id is None:
+            raise InvalidStorePromotionError(
+                "variant_id requiere un product_id asociado"
+            )
+        if self.param_value is not None and not self.param_key:
+            raise InvalidStorePromotionError(
+                "param_value requiere param_key"
+            )
+        if self.param_key is not None and self.product_id is None:
+            raise InvalidStorePromotionError(
+                "param_key requiere un product_id asociado"
+            )
         if (
             self.valid_from is not None
             and self.valid_until is not None

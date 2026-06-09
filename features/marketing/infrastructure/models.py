@@ -61,6 +61,15 @@ class StorePromotionModel(models.Model):
         blank=True,
         related_name="promotions",
     )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="promotions",
+    )
+    param_key = models.CharField(max_length=100, blank=True, null=True)
+    param_value = models.CharField(max_length=100, blank=True, null=True)
     name = models.CharField(max_length=255)
     discount_type = models.CharField(
         max_length=10,
