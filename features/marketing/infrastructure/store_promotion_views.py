@@ -12,6 +12,7 @@ from features.marketing.application.use_cases.manage_store_promotion import (
     DeactivateStorePromotionDTO,
     DeactivateStorePromotionUseCase,
     ListStorePromotionsUseCase,
+    UNSET,
     UpdateStorePromotionDTO,
     UpdateStorePromotionUseCase,
 )
@@ -160,8 +161,12 @@ class StorePromotionDetailView(APIView):
                         variant_id=data.get("variant_id"),
                         param_key=data.get("param_key"),
                         param_value=data.get("param_value"),
-                        valid_from=data.get("valid_from"),
-                        valid_until=data.get("valid_until"),
+                        valid_from=(
+                            data["valid_from"] if "valid_from" in data else UNSET
+                        ),
+                        valid_until=(
+                            data["valid_until"] if "valid_until" in data else UNSET
+                        ),
                         is_active=data.get("is_active"),
                     )
                 )

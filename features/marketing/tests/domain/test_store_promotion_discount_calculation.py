@@ -84,6 +84,24 @@ def test_store_promotion_discount_calculation_rejects_expired():
         )
 
 
+def test_store_promotion_discount_calculation_rejects_not_yet_valid():
+    promotion = StorePromotion(
+        store_id=1,
+        name="Futura",
+        discount_type=DiscountType.PERCENTAGE,
+        discount_value=Decimal("10"),
+        valid_from=datetime(2026, 12, 1, tzinfo=timezone.utc),
+        valid_until=datetime(2026, 12, 31, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(StorePromotionNotApplicableError, match="válida"):
+        StorePromotionDiscountCalculator.calculate(
+            Decimal("50000.00"),
+            promotion,
+            now=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        )
+
+
 def test_store_promotion_entity_rejects_invalid_percentage():
     with pytest.raises(InvalidStorePromotionError, match="100"):
         StorePromotion(

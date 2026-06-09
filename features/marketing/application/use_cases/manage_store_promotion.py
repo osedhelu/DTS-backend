@@ -15,6 +15,13 @@ from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundE
 from features.stores.infrastructure.repositories import DjangoStoreRepository
 
 
+class _UnsetType:
+    """Marca campos omitidos en PATCH parcial."""
+
+
+UNSET = _UnsetType()
+
+
 @dataclass(frozen=True)
 class CreateStorePromotionDTO:
     store_id: int
@@ -42,8 +49,8 @@ class UpdateStorePromotionDTO:
     variant_id: int | None = None
     param_key: str | None = None
     param_value: str | None = None
-    valid_from: datetime | None = None
-    valid_until: datetime | None = None
+    valid_from: datetime | None | _UnsetType = UNSET
+    valid_until: datetime | None | _UnsetType = UNSET
     is_active: bool | None = None
 
 
@@ -278,9 +285,9 @@ class UpdateStorePromotionUseCase(_StorePromotionOwnershipMixin):
             update_data["param_key"] = resolved_param_key
             update_data["param_value"] = resolved_param_value
 
-        if dto.valid_from is not None:
+        if dto.valid_from is not UNSET:
             update_data["valid_from"] = dto.valid_from
-        if dto.valid_until is not None:
+        if dto.valid_until is not UNSET:
             update_data["valid_until"] = dto.valid_until
         if dto.is_active is not None:
             update_data["is_active"] = dto.is_active
