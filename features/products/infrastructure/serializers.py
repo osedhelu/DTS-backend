@@ -188,10 +188,22 @@ class CreateServiceSerializer(serializers.Serializer):
     dynamic_values = serializers.JSONField(required=False)
 
 
+class SubcategoryTreeSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    parent_id = serializers.IntegerField()
+    field_config = serializers.DictField(required=False)
+    images = ProductImageSerializer(many=True, required=False)
+    primary_image_url = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
+
 class CategoryTreeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
-    subcategories = serializers.ListField(child=serializers.DictField())
+    field_config = serializers.DictField(required=False)
+    images = ProductImageSerializer(many=True, required=False)
+    primary_image_url = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    subcategories = SubcategoryTreeSerializer(many=True)
 
 
 class CreateCategorySerializer(serializers.Serializer):
