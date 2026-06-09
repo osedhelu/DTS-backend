@@ -1,4 +1,5 @@
 import pytest
+from datetime import date
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -57,7 +58,7 @@ def test_admin_metrics_returns_sales_active_stores_and_delivery_time(
     from features.orders.infrastructure.models import Order
 
     DailySalesReport.objects.create(
-        report_date="2026-06-01",
+        report_date=date.today(),
         store=store,
         order_count=2,
         gross_revenue="150000.00",

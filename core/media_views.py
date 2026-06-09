@@ -2,6 +2,7 @@
 
 import mimetypes
 
+from django.conf import settings
 from django.http import Http404, HttpResponse
 from django.views.decorators.http import require_GET
 
@@ -10,6 +11,9 @@ from core.storage import get_storage_backend
 
 @require_GET
 def serve_media_file(request, path: str) -> HttpResponse:
+    if not settings.SERVE_MEDIA:
+        raise Http404("Media serving disabled")
+
     backend = get_storage_backend()
     if not backend.exists(path):
         raise Http404(f"Archivo de media no encontrado: {path}")

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -11,7 +11,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from core.settings.apps_registry import build_installed_apps
 from features.accounts.domain.entities import UserRole
 from features.accounts.infrastructure.models import CustomUser
+from features.orders.domain.value_objects import OrderStatus
 from tests.gis_helpers import POSTGIS_DATABASE, create_test_store, postgis_tests_available
+
+COMPLETED_ORDER_STATUSES = (
+    OrderStatus.DELIVERED.value,
+    OrderStatus.COMPLETED.value,
+)
 
 BACKEND_DIR = Path(__file__).resolve().parents[4]
 
@@ -74,6 +80,15 @@ def test_merchant_dashboard_api(api_client):
         )
 
         today = timezone.now()
+        today_date = timezone.localdate()
+        week_start_date = today_date - timedelta(days=today_date.weekday())
+        older_in_week = today - timedelta(days=1)
+        if older_in_week.date() < week_start_date:
+            older_in_week = timezone.make_aware(
+                datetime.combine(week_start_date, time(10, 0)),
+                timezone.get_current_timezone(),
+            )
+
         order = Order.objects.create(
             customer=customer,
             store=store,
@@ -97,9 +112,19 @@ def test_merchant_dashboard_api(api_client):
             order_type=OrderType.SERVICE.value,
             total=Decimal("80000.00"),
         )
-        Order.objects.filter(pk=old_order.pk).update(
-            updated_at=today - timedelta(days=3),
-        )
+        Order.objects.filter(pk=old_order.pk).update(updated_at=older_in_week)
+
+        orders_today_expected = Order.objects.filter(
+            store=store,
+            status__in=COMPLETED_ORDER_STATUSES,
+            updated_at__date=today_date,
+        ).count()
+        orders_this_week_expected = Order.objects.filter(
+            store=store,
+            status__in=COMPLETED_ORDER_STATUSES,
+            updated_at__date__gte=week_start_date,
+            updated_at__date__lte=today_date,
+        ).count()
 
         _auth(api_client, merchant)
         response = api_client.get(
@@ -112,8 +137,8 @@ def test_merchant_dashboard_api(api_client):
         assert payload["order_count"] == 2
         assert payload["total_sales"] == "130000.00"
         assert payload["active_products"] == 1
-        assert payload["orders_today"] == 1
-        assert payload["orders_this_week"] == 2
+        assert payload["orders_today"] == orders_today_expected
+        assert payload["orders_this_week"] == orders_this_week_expected
         assert payload["platform_commission"] == "19500.00"
         assert payload["net_earnings"] == "110500.00"
         assert len(payload["sales_series"]) == 30
