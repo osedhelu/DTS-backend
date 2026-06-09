@@ -1,5 +1,9 @@
 from django.urls import path
 
+from features.products.infrastructure.category_template_views import (
+    StoreCategoryTemplateImportView,
+    StoreCategoryTemplateListView,
+)
 from features.products.infrastructure.category_image_views import (
     CategoryImageDetailView,
     CategoryImageUploadView,
@@ -47,6 +51,16 @@ urlpatterns = [
         "<int:store_id>/products/<int:product_id>/images/<int:image_id>/",
         ProductImageDetailView.as_view(),
         name="store-product-image-detail",
+    ),
+    path(
+        "<int:store_id>/category-templates/",
+        StoreCategoryTemplateListView.as_view(),
+        name="store-category-templates",
+    ),
+    path(
+        "<int:store_id>/categories/import-template/",
+        StoreCategoryTemplateImportView.as_view(),
+        name="store-categories-import-template",
     ),
     path(
         "<int:store_id>/categories/",
