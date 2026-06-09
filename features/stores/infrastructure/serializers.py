@@ -64,7 +64,7 @@ class UpdateStoreProfileSerializer(serializers.Serializer):
         choices=[s.value for s in StoreStatus],
         required=False,
     )
-    logo = serializers.ImageField(required=False)
+    logo = serializers.ImageField(required=False, allow_null=True)
 
     def validate(self, attrs):
         has_lat = "latitude" in attrs

@@ -161,6 +161,53 @@ def test_update_store_profile_api(api_client):
     reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
 )
 @pytest.mark.django_db
+def test_update_store_profile_without_logo_keeps_existing(api_client):
+    from features.stores.domain.value_objects import GeoLocation
+    from features.stores.infrastructure.models import Store as StoreModel
+
+    with override_settings(
+        DATABASES=POSTGIS_DATABASE,
+        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
+        MEDIA_ROOT=BACKEND_DIR / "test_media_store_profile_no_logo",
+    ):
+        merchant = CustomUser.objects.create_user(
+            username="merchant_profile_no_logo",
+            email="profile_no_logo@test.com",
+            password="securepass123",
+            role=UserRole.MERCHANT,
+        )
+        store = StoreModel(
+            owner=merchant,
+            name="Tienda Con Logo",
+            status=StoreStatus.OPEN,
+            vertical=StoreVertical.FOOD,
+        )
+        store.set_location(GeoLocation(latitude=4.7110, longitude=-74.0721))
+        store.logo = _make_test_image()
+        store.save()
+        original_logo = store.logo.name
+
+        _auth(api_client, merchant)
+
+        patch_response = api_client.patch(
+            f"/api/v1/stores/{store.id}/profile/",
+            {"name": "Solo nombre", "logo": None},
+            format="json",
+        )
+
+        assert patch_response.status_code == status.HTTP_200_OK
+        assert patch_response.data["name"] == "Solo nombre"
+        assert patch_response.data["logo_url"]
+
+        store.refresh_from_db()
+        assert store.logo.name == original_logo
+
+
+@pytest.mark.skipif(
+    not _geos_available(),
+    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
+)
+@pytest.mark.django_db
 def test_update_store_profile_location(api_client):
     from features.stores.domain.value_objects import GeoLocation
     from features.stores.infrastructure.models import Store as StoreModel
