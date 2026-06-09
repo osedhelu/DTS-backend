@@ -7,12 +7,18 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from core.openapi import DetailErrorSerializer
-from core.api.throttling import ResendVerificationThrottle
+from core.api.throttling import PasswordResetThrottle, ResendVerificationThrottle
 from features.accounts.application.dto import RegisterMerchantWithStoreDTO, RegisterUserDTO
+from features.accounts.application.use_cases.confirm_password_reset import (
+    ConfirmPasswordResetUseCase,
+)
 from features.accounts.application.use_cases.register_merchant_with_store import (
     RegisterMerchantWithStoreUseCase,
 )
 from features.accounts.application.use_cases.register_user import RegisterUserUseCase
+from features.accounts.application.use_cases.request_password_reset import (
+    RequestPasswordResetUseCase,
+)
 from features.accounts.application.use_cases.resend_verification_email import (
     ResendVerificationEmailUseCase,
 )
@@ -22,6 +28,9 @@ from features.accounts.domain.exceptions import (
     DomainValidationError,
     DuplicateEmailError,
     EmailAlreadyVerifiedError,
+    PasswordResetTokenAlreadyUsedError,
+    PasswordResetTokenExpiredError,
+    PasswordResetTokenNotFoundError,
     VerificationTokenAlreadyUsedError,
     VerificationTokenExpiredError,
     VerificationTokenNotFoundError,
@@ -33,12 +42,20 @@ from features.accounts.infrastructure.serializers import (
     DeviceTokenSerializer,
     MerchantRegisterResponseSerializer,
     MerchantRegisterSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     RegisterSerializer,
     ResendVerificationSerializer,
     UserResponseSerializer,
     VerifyEmailSerializer,
 )
-from features.accounts.infrastructure.tasks import send_merchant_verification_email
+from features.accounts.infrastructure.tasks import (
+    send_merchant_verification_email,
+    send_password_reset_email,
+)
+from features.accounts.infrastructure.password_reset_token_repository import (
+    DjangoPasswordResetTokenRepository,
+)
 from features.accounts.infrastructure.verification_token_repository import (
     DjangoEmailVerificationTokenRepository,
 )
@@ -205,6 +222,59 @@ class ResendVerificationView(APIView):
 
         return Response(
             {"detail": "Si el email está registrado, recibirás un nuevo enlace de verificación"},
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema_view(
+    post=extend_schema(
+        request=PasswordResetRequestSerializer,
+        responses={200: DetailErrorSerializer, 429: DetailErrorSerializer},
+    ),
+)
+class PasswordResetRequestView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [PasswordResetThrottle]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        use_case = RequestPasswordResetUseCase(DjangoPasswordResetTokenRepository())
+        result = use_case.execute(serializer.validated_data["email"])
+
+        if result.user_id is not None and result.token is not None:
+            send_password_reset_email.delay(result.user_id, result.token)
+
+        return Response({"detail": result.message}, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        request=PasswordResetConfirmSerializer,
+        responses={200: DetailErrorSerializer, 400: DetailErrorSerializer},
+    ),
+)
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        use_case = ConfirmPasswordResetUseCase(DjangoPasswordResetTokenRepository())
+        try:
+            use_case.execute(str(data["token"]), data["password"])
+        except PasswordResetTokenNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except PasswordResetTokenExpiredError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except PasswordResetTokenAlreadyUsedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"detail": "Contraseña actualizada correctamente"},
             status=status.HTTP_200_OK,
         )
 

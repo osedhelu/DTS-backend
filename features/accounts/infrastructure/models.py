@@ -210,3 +210,23 @@ class EmailVerificationToken(models.Model):
 
     def __str__(self) -> str:
         return f"Token {self.token} — {self.user.email}"
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="password_reset_tokens",
+    )
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "accounts_password_reset_token"
+        verbose_name = "token de recuperación de contraseña"
+        verbose_name_plural = "tokens de recuperación de contraseña"
+
+    def __str__(self) -> str:
+        return f"Reset {self.token} — {self.user.email}"

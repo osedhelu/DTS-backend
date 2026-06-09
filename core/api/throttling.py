@@ -11,3 +11,7 @@ class UserBurstThrottle(UserRateThrottle):
 
 class ResendVerificationThrottle(AnonRateThrottle):
     scope = "resend_verification"
+
+
+class PasswordResetThrottle(AnonRateThrottle):
+    scope = "password_reset"

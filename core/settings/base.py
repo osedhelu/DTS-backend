@@ -92,6 +92,7 @@ REST_FRAMEWORK = {
         "anon": "60/min",
         "user": "600/min",
         "resend_verification": "5/hour",
+        "password_reset": "5/hour",
     },
 }
 

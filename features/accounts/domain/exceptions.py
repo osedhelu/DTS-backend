@@ -35,3 +35,15 @@ class EmailAlreadyVerifiedError(DomainValidationError):
 
 class InvalidCategoryTemplateError(DomainValidationError):
     pass
+
+
+class PasswordResetTokenNotFoundError(DomainValidationError):
+    pass
+
+
+class PasswordResetTokenExpiredError(DomainValidationError):
+    pass
+
+
+class PasswordResetTokenAlreadyUsedError(DomainValidationError):
+    pass
