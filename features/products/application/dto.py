@@ -137,3 +137,30 @@ class DeleteCategoryDTO:
     store_id: int
     owner_id: int
     category_id: int
+
+
+@dataclass(frozen=True)
+class UploadCategoryImageDTO:
+    store_id: int
+    category_id: int
+    owner_id: int
+    image_file: object
+    is_primary: bool = False
+
+
+@dataclass(frozen=True)
+class DeleteCategoryImageDTO:
+    store_id: int
+    category_id: int
+    image_id: int
+    owner_id: int
+
+
+@dataclass(frozen=True)
+class UpdateCategoryImageDTO:
+    store_id: int
+    category_id: int
+    image_id: int
+    owner_id: int
+    is_primary: bool | None = None
+    image_file: object | None = None

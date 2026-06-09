@@ -2,13 +2,16 @@ from django.db import models
 
 from features.products.domain.entities import (
     Category,
+    CategoryImage,
     Product,
     ProductImage,
     ProductIngredient,
     ProductType,
     ProductVariant,
 )
+from features.products.application.category_image_serializers import serialize_category_images
 from features.products.infrastructure.models import Category as CategoryModel
+from features.products.infrastructure.models import CategoryImage as CategoryImageModel
 from features.products.infrastructure.models import Product as ProductModel
 from features.products.infrastructure.models import ProductImage as ProductImageModel
 from features.products.infrastructure.models import ProductIngredient as ProductIngredientModel
@@ -71,6 +74,24 @@ def _image_to_entity(model: ProductImageModel) -> ProductImage:
     )
 
 
+def _category_image_to_entity(model: CategoryImageModel) -> CategoryImage:
+    return CategoryImage(
+        id=model.id,
+        category_id=model.category_id,
+        image_path=model.image.url if model.image else "",
+        is_primary=model.is_primary,
+    )
+
+
+def _category_media_payload(category_id: int) -> dict:
+    images = [
+        _category_image_to_entity(model)
+        for model in CategoryImageModel.objects.filter(category_id=category_id)
+    ]
+    serialized, primary_url = serialize_category_images(images)
+    return {"images": serialized, "primary_image_url": primary_url}
+
+
 class DjangoCategoryRepository:
     def create(self, data: dict) -> Category:
         model = CategoryModel.objects.create(
@@ -98,12 +119,14 @@ class DjangoCategoryRepository:
                 "id": root.id,
                 "name": root.name,
                 "field_config": root.field_config or {},
+                **_category_media_payload(root.id),
                 "subcategories": [
                     {
                         "id": sub.id,
                         "name": sub.name,
                         "parent_id": sub.parent_id,
                         "field_config": sub.field_config or {},
+                        **_category_media_payload(sub.id),
                     }
                     for sub in root.subcategories.all()
                 ],
@@ -133,6 +156,74 @@ class DjangoCategoryRepository:
 
     def count_subcategories(self, category_id: int) -> int:
         return CategoryModel.objects.filter(parent_id=category_id).count()
+
+    def list_images(self, category_id: int) -> list[CategoryImage]:
+        return [
+            _category_image_to_entity(model)
+            for model in CategoryImageModel.objects.filter(category_id=category_id)
+        ]
+
+    def add_image(
+        self,
+        category_id: int,
+        image_file,
+        *,
+        is_primary: bool = False,
+    ) -> CategoryImage:
+        if is_primary:
+            CategoryImageModel.objects.filter(category_id=category_id).update(
+                is_primary=False,
+            )
+        model = CategoryImageModel.objects.create(
+            category_id=category_id,
+            image=image_file,
+            is_primary=is_primary,
+        )
+        return _category_image_to_entity(model)
+
+    def get_image(self, image_id: int) -> CategoryImage | None:
+        try:
+            return _category_image_to_entity(CategoryImageModel.objects.get(pk=image_id))
+        except CategoryImageModel.DoesNotExist:
+            return None
+
+    def delete_image(self, image_id: int) -> None:
+        model = CategoryImageModel.objects.get(pk=image_id)
+        was_primary = model.is_primary
+        category_id = model.category_id
+        model.delete()
+        if was_primary:
+            next_image = CategoryImageModel.objects.filter(category_id=category_id).first()
+            if next_image is not None:
+                next_image.is_primary = True
+                next_image.save(update_fields=["is_primary", "updated_at"])
+
+    def update_image(
+        self,
+        image_id: int,
+        *,
+        is_primary: bool | None = None,
+        image_file=None,
+    ) -> CategoryImage:
+        model = CategoryImageModel.objects.get(pk=image_id)
+        update_fields = ["updated_at"]
+
+        if is_primary is True:
+            CategoryImageModel.objects.filter(category_id=model.category_id).update(
+                is_primary=False,
+            )
+            model.is_primary = True
+            update_fields.append("is_primary")
+        elif is_primary is False:
+            model.is_primary = False
+            update_fields.append("is_primary")
+
+        if image_file is not None:
+            model.image = image_file
+            update_fields.append("image")
+
+        model.save(update_fields=update_fields)
+        return _category_image_to_entity(model)
 
 
 class DjangoProductRepository:

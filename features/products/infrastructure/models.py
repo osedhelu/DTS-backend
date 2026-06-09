@@ -157,3 +157,26 @@ class ProductImage(models.Model):
 
     def __str__(self) -> str:
         return f"Imagen {self.pk} — {self.product.name}"
+
+
+def category_image_upload_to(instance: "CategoryImage", filename: str) -> str:
+    return f"categories/{instance.category_id}/{filename}"
+
+
+class CategoryImage(models.Model):
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    image = models.ImageField(upload_to=category_image_upload_to)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "products_category_image"
+        ordering = ["-is_primary", "id"]
+
+    def __str__(self) -> str:
+        return f"Imagen {self.pk} — {self.category.name}"

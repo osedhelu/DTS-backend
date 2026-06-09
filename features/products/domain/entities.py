@@ -127,6 +127,14 @@ class ProductImage:
 
 
 @dataclass
+class CategoryImage:
+    category_id: int
+    image_path: str
+    is_primary: bool = False
+    id: int | None = None
+
+
+@dataclass
 class ProductDetails:
     product: Product
     variants: list[ProductVariant]

@@ -2,6 +2,7 @@ from typing import Any, Protocol
 
 from features.products.domain.entities import (
     Category,
+    CategoryImage,
     Product,
     ProductImage,
     ProductIngredient,
@@ -75,3 +76,21 @@ class CategoryRepository(Protocol):
     def count_products(self, category_id: int) -> int: ...
 
     def count_subcategories(self, category_id: int) -> int: ...
+
+    def list_images(self, category_id: int) -> list[CategoryImage]: ...
+
+    def add_image(
+        self, category_id: int, image_file: Any, *, is_primary: bool = False
+    ) -> CategoryImage: ...
+
+    def get_image(self, image_id: int) -> CategoryImage | None: ...
+
+    def delete_image(self, image_id: int) -> None: ...
+
+    def update_image(
+        self,
+        image_id: int,
+        *,
+        is_primary: bool | None = None,
+        image_file: Any | None = None,
+    ) -> CategoryImage: ...

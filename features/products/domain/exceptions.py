@@ -21,6 +21,10 @@ class ProductImageNotFoundError(DomainValidationError):
     pass
 
 
+class CategoryImageNotFoundError(DomainValidationError):
+    pass
+
+
 class CategoryNotFoundError(DomainValidationError):
     pass
 
