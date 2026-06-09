@@ -49,6 +49,17 @@ CategoryResponseSerializer = inline_serializer(
 )
 
 
+def _product_serializer_data(products, repository):
+    items = products if isinstance(products, list) else [products]
+    primary_urls = repository.primary_image_urls_for_products([item.id for item in items])
+    serializer = ProductSerializer(
+        products,
+        many=isinstance(products, list),
+        context={"primary_image_urls": primary_urls},
+    )
+    return serializer.data
+
+
 @extend_schema_view(
     get=extend_schema(responses={200: ProductSerializer(many=True)}),
     post=extend_schema(
@@ -83,11 +94,11 @@ class StoreProductListCreateView(APIView):
             subcategory_id=parsed_subcategory,
             search=search,
         )
-        return paginate_list(
-            request,
-            products,
-            lambda page: ProductSerializer(page, many=True).data,
-        )
+
+        def serialize_page(page):
+            return _product_serializer_data(page, repository)
+
+        return paginate_list(request, products, serialize_page)
 
     def post(self, request, store_id: int):
         from features.products.application.use_cases.manage_product import (
@@ -160,7 +171,10 @@ class StoreProductListCreateView(APIView):
         except (CategoryNotFoundError, InvalidCategoryHierarchyError, DomainValidationError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
+        return Response(
+            _product_serializer_data(product, product_repository),
+            status=status.HTTP_201_CREATED,
+        )
 
 
 @extend_schema_view(
@@ -240,7 +254,7 @@ class StoreProductDetailView(APIView):
                         {"detail": "El producto no pertenece a este comercio"},
                         status=status.HTTP_404_NOT_FOUND,
                     )
-                return Response(ProductSerializer(product).data)
+                return Response(_product_serializer_data(product, product_repository))
 
             if request.data.get("is_active") is False and len(request.data) == 1:
                 use_case = DeactivateProductUseCase(product_repository, store_repository)
@@ -252,7 +266,7 @@ class StoreProductDetailView(APIView):
                         {"detail": "El producto no pertenece a este comercio"},
                         status=status.HTTP_404_NOT_FOUND,
                     )
-                return Response(ProductSerializer(product).data)
+                return Response(_product_serializer_data(product, product_repository))
 
             serializer = UpdateProductSerializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)

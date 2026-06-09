@@ -169,3 +169,44 @@ def test_product_image_delete_and_set_primary_api(api_client):
         assert delete_response.status_code == status.HTTP_204_NO_CONTENT
         assert ProductImage.objects.filter(product=product).count() == 1
         assert ProductImage.objects.get(pk=primary.pk).is_primary is True
+
+
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
+)
+@pytest.mark.django_db
+def test_list_products_includes_primary_image_url(api_client):
+    from features.products.infrastructure.models import Product, ProductImage
+
+    with override_settings(
+        DATABASES=POSTGIS_DATABASE,
+        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
+        MEDIA_ROOT=BACKEND_DIR / "test_media_list_primary",
+    ):
+        merchant = CustomUser.objects.create_user(
+            username="merchant_list_primary",
+            email="list_primary@test.com",
+            password="securepass123",
+            role=UserRole.MERCHANT,
+        )
+        store = create_test_store(merchant)
+        product = Product.objects.create(
+            store=store,
+            name="Ensalada César",
+            price=Decimal("8900.00"),
+            stock=8,
+            product_type=ProductType.PHYSICAL,
+        )
+        ProductImage.objects.create(
+            product=product,
+            image=_make_image("cesar.png"),
+            is_primary=True,
+        )
+
+        response = api_client.get(f"/api/v1/stores/{store.pk}/products/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] == 1
+        assert response.data["results"][0]["primary_image_url"]
+        assert f"/media/products/{product.pk}/" in response.data["results"][0]["primary_image_url"]

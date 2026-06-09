@@ -226,6 +226,19 @@ class DjangoCategoryRepository:
         return _category_image_to_entity(model)
 
 
+def _primary_image_url_for_product_images(models: list[ProductImageModel]) -> str | None:
+    from core.media_urls import build_public_media_url
+
+    if not models:
+        return None
+
+    primary = next((model for model in models if model.is_primary), models[0])
+    if not primary.image:
+        return None
+
+    return build_public_media_url(primary.image.url)
+
+
 class DjangoProductRepository:
     def create(self, data: dict) -> Product:
         model = ProductModel.objects.create(
@@ -402,3 +415,20 @@ class DjangoProductRepository:
             queryset = queryset.filter(name__icontains=search.strip())
 
         return [_product_to_entity(model) for model in queryset]
+
+    def primary_image_urls_for_products(self, product_ids: list[int]) -> dict[int, str | None]:
+        if not product_ids:
+            return {}
+
+        grouped: dict[int, list[ProductImageModel]] = {}
+        for model in ProductImageModel.objects.filter(product_id__in=product_ids).order_by(
+            "product_id",
+            "-is_primary",
+            "id",
+        ):
+            grouped.setdefault(model.product_id, []).append(model)
+
+        return {
+            product_id: _primary_image_url_for_product_images(images)
+            for product_id, images in grouped.items()
+        }

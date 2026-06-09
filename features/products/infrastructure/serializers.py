@@ -18,8 +18,15 @@ class ProductSerializer(serializers.Serializer):
     duration_minutes = serializers.IntegerField(allow_null=True, required=False)
     tracks_stock = serializers.BooleanField(read_only=True)
     dynamic_values = serializers.JSONField(required=False)
+    primary_image_url = serializers.CharField(
+        read_only=True,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
 
     def to_representation(self, instance):
+        primary_urls = self.context.get("primary_image_urls") or {}
         return {
             "id": instance.id,
             "name": instance.name,
@@ -35,6 +42,7 @@ class ProductSerializer(serializers.Serializer):
             "duration_minutes": instance.duration_minutes,
             "tracks_stock": instance.tracks_stock,
             "dynamic_values": instance.dynamic_values or {},
+            "primary_image_url": primary_urls.get(instance.id),
         }
 
 
@@ -110,7 +118,7 @@ class ProductDetailSerializer(serializers.Serializer):
         ingredients = getattr(instance, "ingredients", [])
         images = getattr(instance, "images", [])
 
-        return {
+        data = {
             "id": product.id,
             "name": product.name,
             "price": str(product.price),
@@ -151,6 +159,11 @@ class ProductDetailSerializer(serializers.Serializer):
                 for image in images
             ],
         }
+        data["primary_image_url"] = next(
+            (item["url"] for item in data["images"] if item["is_primary"]),
+            data["images"][0]["url"] if data["images"] else None,
+        )
+        return data
 
 
 class ReplaceVariantsSerializer(serializers.Serializer):
