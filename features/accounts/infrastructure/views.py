@@ -244,7 +244,8 @@ class PasswordResetRequestView(APIView):
         result = use_case.execute(serializer.validated_data["email"])
 
         if result.user_id is not None and result.token is not None:
-            send_password_reset_email.delay(result.user_id, result.token)
+            # Envío síncrono: el usuario espera el correo y en dev suele no haber worker Celery.
+            send_password_reset_email(result.user_id, result.token)
 
         return Response({"detail": result.message}, status=status.HTTP_200_OK)
 
