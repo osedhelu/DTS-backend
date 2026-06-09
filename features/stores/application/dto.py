@@ -28,5 +28,7 @@ class UpdateStoreProfileDTO:
     description: str | None = None
     phone: str | None = None
     address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     status: StoreStatus | None = None
     logo_file: object | None = None

@@ -82,6 +82,7 @@ class DjangoStoreRepository:
         store_id: int,
         data: dict,
         logo_file: object | None = None,
+        location: GeoLocation | None = None,
     ) -> Store:
         model = StoreModel.objects.get(pk=store_id)
         update_fields = ["updated_at"]
@@ -89,6 +90,10 @@ class DjangoStoreRepository:
         for field, value in data.items():
             setattr(model, field, value)
             update_fields.append(field)
+
+        if location is not None:
+            model.set_location(location)
+            update_fields.append("location")
 
         if logo_file is not None:
             model.logo = logo_file

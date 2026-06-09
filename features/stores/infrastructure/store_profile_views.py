@@ -74,6 +74,8 @@ class StoreProfileView(APIView):
                     description=data.get("description"),
                     phone=data.get("phone"),
                     address=data.get("address"),
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
                     status=StoreStatus(data["status"]) if "status" in data else None,
                     logo_file=data.get("logo"),
                 )

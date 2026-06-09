@@ -31,4 +31,5 @@ class StoreRepository(Protocol):
         store_id: int,
         data: dict,
         logo_file: object | None = None,
+        location: object | None = None,
     ) -> Store: ...

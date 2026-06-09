@@ -6,6 +6,7 @@ from features.stores.domain.exceptions import (
     StoreNotFoundError,
 )
 from features.stores.domain.repositories import StoreRepository
+from features.stores.domain.value_objects import GeoLocation
 
 
 class UpdateStoreProfileUseCase:
@@ -37,16 +38,21 @@ class UpdateStoreProfileUseCase:
         if dto.address is not None:
             updates["address"] = dto.address.strip()
 
+        location: GeoLocation | None = None
+        if dto.latitude is not None and dto.longitude is not None:
+            location = GeoLocation(latitude=dto.latitude, longitude=dto.longitude)
+
         if dto.status is not None:
             updates["status"] = dto.status.value
 
-        if not updates and dto.logo_file is None:
+        if not updates and dto.logo_file is None and location is None:
             raise DomainValidationError("No hay cambios para guardar")
 
         return self._store_repository.update_profile(
             dto.store_id,
             updates,
             logo_file=dto.logo_file,
+            location=location,
         )
 
     def get_profile(self, store_id: int, owner_id: int):

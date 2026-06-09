@@ -58,8 +58,19 @@ class UpdateStoreProfileSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True)
     phone = serializers.CharField(required=False, allow_blank=True, max_length=30)
     address = serializers.CharField(required=False, allow_blank=True)
+    latitude = serializers.FloatField(required=False, min_value=-90, max_value=90)
+    longitude = serializers.FloatField(required=False, min_value=-180, max_value=180)
     status = serializers.ChoiceField(
         choices=[s.value for s in StoreStatus],
         required=False,
     )
     logo = serializers.ImageField(required=False)
+
+    def validate(self, attrs):
+        has_lat = "latitude" in attrs
+        has_lng = "longitude" in attrs
+        if has_lat ^ has_lng:
+            raise serializers.ValidationError(
+                "Debes enviar latitude y longitude juntos."
+            )
+        return attrs
