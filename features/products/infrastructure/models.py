@@ -169,7 +169,7 @@ class CategoryImage(models.Model):
         on_delete=models.CASCADE,
         related_name="images",
     )
-    image = models.ImageField(upload_to=category_image_upload_to)
+    image = models.FileField(upload_to=category_image_upload_to)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

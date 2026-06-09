@@ -18,17 +18,17 @@ from features.products.domain.exceptions import (
     DomainValidationError,
 )
 from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
-from features.products.infrastructure.serializers import (
-    ProductImageSerializer,
-    UpdateProductImageSerializer,
-    UploadProductImageSerializer,
+from features.products.infrastructure.category_image_serializers import (
+    UpdateCategoryImageSerializer,
+    UploadCategoryImageSerializer,
 )
+from features.products.infrastructure.serializers import ProductImageSerializer
 
 
 @extend_schema_view(
     get=extend_schema(responses={200: ProductImageSerializer(many=True)}),
     post=extend_schema(
-        request=UploadProductImageSerializer,
+        request=UploadCategoryImageSerializer,
         responses={201: ProductImageSerializer, 400: DetailErrorSerializer},
     ),
 )
@@ -60,7 +60,7 @@ class CategoryImageUploadView(APIView):
         from features.products.infrastructure.repositories import DjangoCategoryRepository
         from features.stores.infrastructure.repositories import DjangoStoreRepository
 
-        serializer = UploadProductImageSerializer(data=request.data)
+        serializer = UploadCategoryImageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:
@@ -98,7 +98,7 @@ class CategoryImageUploadView(APIView):
 
 @extend_schema_view(
     patch=extend_schema(
-        request=UpdateProductImageSerializer,
+        request=UpdateCategoryImageSerializer,
         responses={200: ProductImageSerializer, 400: DetailErrorSerializer},
     ),
     delete=extend_schema(responses={204: None, 404: DetailErrorSerializer}),
@@ -114,7 +114,7 @@ class CategoryImageDetailView(APIView):
         from features.products.infrastructure.repositories import DjangoCategoryRepository
         from features.stores.infrastructure.repositories import DjangoStoreRepository
 
-        serializer = UpdateProductImageSerializer(data=request.data)
+        serializer = UpdateCategoryImageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:

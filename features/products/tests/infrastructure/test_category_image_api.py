@@ -30,6 +30,11 @@ def _make_image(name: str = "category.png") -> SimpleUploadedFile:
     return SimpleUploadedFile(name, buffer.read(), content_type="image/png")
 
 
+def _make_svg(name: str = "icon.svg") -> SimpleUploadedFile:
+    content = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>'
+    return SimpleUploadedFile(name, content, content_type="image/svg+xml")
+
+
 @pytest.mark.skipif(
     not postgis_tests_available(),
     reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
@@ -92,4 +97,36 @@ def test_category_image_upload_and_primary_api(api_client):
             f"/api/v1/stores/{store.pk}/categories/{category.pk}/images/{image_id}/",
         )
         assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+        assert CategoryImage.objects.filter(category=category).count() == 1
+
+
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
+)
+@pytest.mark.django_db
+def test_category_svg_icon_upload_api(api_client):
+    with override_settings(
+        DATABASES=POSTGIS_DATABASE,
+        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
+        MEDIA_ROOT=BACKEND_DIR / "test_media_category_svg",
+    ):
+        merchant = CustomUser.objects.create_user(
+            username="merchant_category_svg",
+            email="category_svg@test.com",
+            password="securepass123",
+            role=UserRole.MERCHANT,
+        )
+        store = create_test_store(merchant)
+        category = Category.objects.create(store=store, name="Bebidas")
+        _auth(api_client, merchant)
+
+        response = api_client.post(
+            f"/api/v1/stores/{store.pk}/categories/{category.pk}/images/",
+            {"image": _make_svg("bebidas.svg"), "is_primary": True},
+            format="multipart",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["url"].endswith(".svg")
         assert CategoryImage.objects.filter(category=category).count() == 1
