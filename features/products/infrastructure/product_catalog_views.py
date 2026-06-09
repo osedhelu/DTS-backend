@@ -7,13 +7,16 @@ from rest_framework.views import APIView
 from core.openapi import DetailErrorSerializer
 from features.accounts.infrastructure.permissions import IsMerchant
 from features.products.application.dto import (
+    DeleteProductImageDTO,
     ReplaceIngredientsDTO,
     ReplaceVariantsDTO,
+    UpdateProductImageDTO,
     UploadProductImageDTO,
 )
 from features.products.domain.exceptions import (
     DomainValidationError,
     ProductNotFoundError,
+    ProductImageNotFoundError,
     VariantsNotAllowedError,
 )
 from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundError
@@ -23,6 +26,7 @@ from features.products.infrastructure.serializers import (
     ProductVariantSerializer,
     ReplaceIngredientsSerializer,
     ReplaceVariantsSerializer,
+    UpdateProductImageSerializer,
     UploadProductImageSerializer,
 )
 
@@ -255,3 +259,108 @@ class ProductImageUploadView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+def _serialize_product_image(image) -> dict:
+    return {
+        "id": image.id,
+        "url": image.image_path,
+        "is_primary": image.is_primary,
+    }
+
+
+@extend_schema_view(
+    patch=extend_schema(
+        request=UpdateProductImageSerializer,
+        responses={200: ProductImageSerializer, 400: DetailErrorSerializer},
+    ),
+    delete=extend_schema(responses={204: None, 404: DetailErrorSerializer}),
+)
+class ProductImageDetailView(APIView):
+    permission_classes = [IsMerchant]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def patch(self, request, store_id: int, product_id: int, image_id: int):
+        from features.products.application.use_cases.update_product import (
+            UpdateProductImageUseCase,
+        )
+        from features.products.infrastructure.repositories import DjangoProductRepository
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        serializer = UpdateProductImageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            image = UpdateProductImageUseCase(
+                DjangoProductRepository(),
+                DjangoStoreRepository(),
+            ).execute(
+                UpdateProductImageDTO(
+                    product_id=product_id,
+                    image_id=image_id,
+                    owner_id=request.user.id,
+                    is_primary=serializer.validated_data.get("is_primary"),
+                    image_file=serializer.validated_data.get("image"),
+                )
+            )
+        except ProductNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except ProductImageNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (StoreNotFoundError, NotStoreOwnerError) as exc:
+            status_code = (
+                status.HTTP_403_FORBIDDEN
+                if isinstance(exc, NotStoreOwnerError)
+                else status.HTTP_404_NOT_FOUND
+            )
+            return Response({"detail": str(exc)}, status=status_code)
+        except DomainValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        product = DjangoProductRepository().get_by_id(product_id)
+        if product is None or product.store_id != store_id:
+            return Response(
+                {"detail": "Producto no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(_serialize_product_image(image))
+
+    def delete(self, request, store_id: int, product_id: int, image_id: int):
+        from features.products.application.use_cases.update_product import (
+            DeleteProductImageUseCase,
+        )
+        from features.products.infrastructure.repositories import DjangoProductRepository
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
+
+        try:
+            DeleteProductImageUseCase(
+                DjangoProductRepository(),
+                DjangoStoreRepository(),
+            ).execute(
+                DeleteProductImageDTO(
+                    product_id=product_id,
+                    image_id=image_id,
+                    owner_id=request.user.id,
+                )
+            )
+        except ProductNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except ProductImageNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (StoreNotFoundError, NotStoreOwnerError) as exc:
+            status_code = (
+                status.HTTP_403_FORBIDDEN
+                if isinstance(exc, NotStoreOwnerError)
+                else status.HTTP_404_NOT_FOUND
+            )
+            return Response({"detail": str(exc)}, status=status_code)
+
+        product = DjangoProductRepository().get_by_id(product_id)
+        if product is None or product.store_id != store_id:
+            return Response(
+                {"detail": "Producto no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

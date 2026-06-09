@@ -1,7 +1,9 @@
 from features.products.application.dto import (
+    DeleteProductImageDTO,
     ReplaceIngredientsDTO,
     ReplaceVariantsDTO,
     UpdateProductDTO,
+    UpdateProductImageDTO,
     UploadProductImageDTO,
 )
 from features.products.application.dynamic_field_validation import (
@@ -21,6 +23,7 @@ from features.products.domain.exceptions import (
     DomainValidationError,
     InvalidCategoryHierarchyError,
     InvalidProductPriceError,
+    ProductImageNotFoundError,
     ProductNotFoundError,
 )
 from features.products.domain.repositories import CategoryRepository, ProductRepository
@@ -293,4 +296,46 @@ class UploadProductImageUseCase(_ProductOwnershipMixin):
             dto.product_id,
             dto.image_file,
             is_primary=dto.is_primary,
+        )
+
+
+class DeleteProductImageUseCase(_ProductOwnershipMixin):
+    def __init__(
+        self,
+        product_repository: ProductRepository,
+        store_repository: StoreRepository,
+    ) -> None:
+        self._product_repository = product_repository
+        self._store_repository = store_repository
+
+    def execute(self, dto: DeleteProductImageDTO) -> None:
+        self._get_owned_product(dto.product_id, dto.owner_id)
+        image = self._product_repository.get_image(dto.image_id)
+        if image is None or image.product_id != dto.product_id:
+            raise ProductImageNotFoundError("Imagen no encontrada")
+        self._product_repository.delete_image(dto.image_id)
+
+
+class UpdateProductImageUseCase(_ProductOwnershipMixin):
+    def __init__(
+        self,
+        product_repository: ProductRepository,
+        store_repository: StoreRepository,
+    ) -> None:
+        self._product_repository = product_repository
+        self._store_repository = store_repository
+
+    def execute(self, dto: UpdateProductImageDTO) -> ProductImage:
+        self._get_owned_product(dto.product_id, dto.owner_id)
+        image = self._product_repository.get_image(dto.image_id)
+        if image is None or image.product_id != dto.product_id:
+            raise ProductImageNotFoundError("Imagen no encontrada")
+
+        if dto.is_primary is None and dto.image_file is None:
+            raise DomainValidationError("No hay cambios para aplicar a la imagen")
+
+        return self._product_repository.update_image(
+            dto.image_id,
+            is_primary=dto.is_primary,
+            image_file=dto.image_file,
         )

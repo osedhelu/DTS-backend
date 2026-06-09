@@ -243,6 +243,50 @@ class DjangoProductRepository:
         )
         return _image_to_entity(model)
 
+    def get_image(self, image_id: int) -> ProductImage | None:
+        try:
+            return _image_to_entity(ProductImageModel.objects.get(pk=image_id))
+        except ProductImageModel.DoesNotExist:
+            return None
+
+    def delete_image(self, image_id: int) -> None:
+        model = ProductImageModel.objects.get(pk=image_id)
+        was_primary = model.is_primary
+        product_id = model.product_id
+        model.delete()
+        if was_primary:
+            next_image = ProductImageModel.objects.filter(product_id=product_id).first()
+            if next_image is not None:
+                next_image.is_primary = True
+                next_image.save(update_fields=["is_primary", "updated_at"])
+
+    def update_image(
+        self,
+        image_id: int,
+        *,
+        is_primary: bool | None = None,
+        image_file=None,
+    ) -> ProductImage:
+        model = ProductImageModel.objects.get(pk=image_id)
+        update_fields = ["updated_at"]
+
+        if is_primary is True:
+            ProductImageModel.objects.filter(product_id=model.product_id).update(
+                is_primary=False,
+            )
+            model.is_primary = True
+            update_fields.append("is_primary")
+        elif is_primary is False:
+            model.is_primary = False
+            update_fields.append("is_primary")
+
+        if image_file is not None:
+            model.image = image_file
+            update_fields.append("image")
+
+        model.save(update_fields=update_fields)
+        return _image_to_entity(model)
+
     def list_by_store(
         self,
         store_id: int,

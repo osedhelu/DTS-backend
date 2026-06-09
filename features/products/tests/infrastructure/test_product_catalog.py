@@ -109,3 +109,63 @@ def test_product_image_upload_api(api_client):
         assert response.data["is_primary"] is True
         assert "url" in response.data
         assert ProductImage.objects.filter(product=product).count() == 1
+
+
+@pytest.mark.skipif(
+    not postgis_tests_available(),
+    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
+)
+@pytest.mark.django_db
+def test_product_image_delete_and_set_primary_api(api_client):
+    from features.products.infrastructure.models import Product, ProductImage
+
+    with override_settings(
+        DATABASES=POSTGIS_DATABASE,
+        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
+        MEDIA_ROOT=BACKEND_DIR / "test_media_api_detail",
+    ):
+        merchant = CustomUser.objects.create_user(
+            username="merchant_image_detail",
+            email="image_detail@test.com",
+            password="securepass123",
+            role=UserRole.MERCHANT,
+        )
+        store = create_test_store(merchant)
+        product = Product.objects.create(
+            store=store,
+            name="Hamburguesa",
+            price=Decimal("15000.00"),
+            stock=10,
+            product_type=ProductType.PHYSICAL,
+        )
+        primary = ProductImage.objects.create(
+            product=product,
+            image=_make_image("primary.png"),
+            is_primary=True,
+        )
+        secondary = ProductImage.objects.create(
+            product=product,
+            image=_make_image("secondary.png"),
+            is_primary=False,
+        )
+        _auth(api_client, merchant)
+
+        patch_response = api_client.patch(
+            f"/api/v1/stores/{store.pk}/products/{product.pk}/images/{secondary.pk}/",
+            {"is_primary": True},
+            format="multipart",
+        )
+        assert patch_response.status_code == status.HTTP_200_OK
+        assert patch_response.data["is_primary"] is True
+
+        primary.refresh_from_db()
+        secondary.refresh_from_db()
+        assert primary.is_primary is False
+        assert secondary.is_primary is True
+
+        delete_response = api_client.delete(
+            f"/api/v1/stores/{store.pk}/products/{product.pk}/images/{secondary.pk}/",
+        )
+        assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+        assert ProductImage.objects.filter(product=product).count() == 1
+        assert ProductImage.objects.get(pk=primary.pk).is_primary is True

@@ -166,6 +166,18 @@ class UploadProductImageSerializer(serializers.Serializer):
     is_primary = serializers.BooleanField(default=False, required=False)
 
 
+class UpdateProductImageSerializer(serializers.Serializer):
+    image = serializers.ImageField(required=False)
+    is_primary = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError(
+                "Indica is_primary o sube una nueva imagen.",
+            )
+        return attrs
+
+
 class CreateServiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     price = serializers.DecimalField(max_digits=12, decimal_places=2)

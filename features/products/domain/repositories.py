@@ -37,6 +37,18 @@ class ProductRepository(Protocol):
         self, product_id: int, image_file: Any, *, is_primary: bool = False
     ) -> ProductImage: ...
 
+    def get_image(self, image_id: int) -> ProductImage | None: ...
+
+    def delete_image(self, image_id: int) -> None: ...
+
+    def update_image(
+        self,
+        image_id: int,
+        *,
+        is_primary: bool | None = None,
+        image_file: Any | None = None,
+    ) -> ProductImage: ...
+
     def list_by_store(
         self,
         store_id: int,

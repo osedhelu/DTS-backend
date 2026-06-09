@@ -1,6 +1,7 @@
 from django.urls import path
 
 from features.products.infrastructure.product_catalog_views import (
+    ProductImageDetailView,
     ProductImageUploadView,
     ProductIngredientListView,
     ProductVariantListView,
@@ -37,6 +38,11 @@ urlpatterns = [
         "<int:store_id>/products/<int:product_id>/images/",
         ProductImageUploadView.as_view(),
         name="store-product-images",
+    ),
+    path(
+        "<int:store_id>/products/<int:product_id>/images/<int:image_id>/",
+        ProductImageDetailView.as_view(),
+        name="store-product-image-detail",
     ),
     path(
         "<int:store_id>/categories/",

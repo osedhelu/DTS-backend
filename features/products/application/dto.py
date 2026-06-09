@@ -93,6 +93,22 @@ class UploadProductImageDTO:
 
 
 @dataclass(frozen=True)
+class DeleteProductImageDTO:
+    product_id: int
+    image_id: int
+    owner_id: int
+
+
+@dataclass(frozen=True)
+class UpdateProductImageDTO:
+    product_id: int
+    image_id: int
+    owner_id: int
+    is_primary: bool | None = None
+    image_file: object | None = None
+
+
+@dataclass(frozen=True)
 class CreateCategoryDTO:
     store_id: int
     owner_id: int
