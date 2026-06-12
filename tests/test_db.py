@@ -27,6 +27,24 @@ def test_build_databases_uses_postgis_engine():
     assert config["default"]["PORT"] == "5432"
 
 
+def test_build_databases_from_database_url():
+    import environ
+
+    env = environ.Env()
+    env.ENVIRON["DATABASE_URL"] = (
+        "postgres://postgres:secret@postgis.railway.internal:5432/ECOMMERCE_DIS"
+    )
+    config = build_databases(env, base_dir="/tmp")
+    db = config["default"]
+    assert db["ENGINE"] == "django.contrib.gis.db.backends.postgis"
+    assert db["NAME"] == "ECOMMERCE_DIS"
+    assert db["USER"] == "postgres"
+    assert db["PASSWORD"] == "secret"
+    assert db["HOST"] == "postgis.railway.internal"
+    assert db["PORT"] == 5432
+    assert db["OPTIONS"]["connect_timeout"] == 10
+
+
 def test_build_databases_reads_env_overrides():
     env = _FakeEnv(
         {
