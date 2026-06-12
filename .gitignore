@@ -1,0 +1,110 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ── Entornos virtuales (uv / venv) ────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ── Variables de entorno y secretos ─────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# Firebase / AWS / credenciales locales
+*-service-account.json
+firebase-adminsdk*.json
+*.pem
+*.key
+
+# ── Django ───────────────────────────────────────────────────────────────────
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Archivos generados en runtime
+staticfiles/
+media/
+test_media/
+test_media_*/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# ── Testing y cobertura ───────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+pytestdebug.log
+
+# ── Linting y type checking ───────────────────────────────────────────────────
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# ── IDEs y editores ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ── Sistema operativo ─────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ── Docker / despliegue local ─────────────────────────────────────────────────
+docker-compose.override.yml
+*.local.yml
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.temp
+.cache/
+node_modules/
