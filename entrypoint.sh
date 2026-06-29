@@ -53,10 +53,13 @@ PY
 
 wait_for_db
 
-MEDIA_DIR="${MEDIA_ROOT:-/app/media}"
-export MEDIA_ROOT="$MEDIA_DIR"
-mkdir -p "$MEDIA_DIR"
-echo "==> MEDIA_ROOT=${MEDIA_DIR}"
+# Worker/beat: RUN_MIGRATIONS=false (solo la API migra y collectstatic).
+if [[ "${RUN_MIGRATIONS:-true}" == "true" ]]; then
+  MEDIA_DIR="${MEDIA_ROOT:-/app/media}"
+  export MEDIA_ROOT="$MEDIA_DIR"
+  mkdir -p "$MEDIA_DIR"
+  echo "==> MEDIA_ROOT=${MEDIA_DIR}"
+fi
 
 if [[ "${RUN_MIGRATIONS:-true}" == "true" ]]; then
   enable_postgis

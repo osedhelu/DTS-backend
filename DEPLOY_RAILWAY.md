@@ -2,70 +2,30 @@
 
 Este repo (`backend/`) se despliega **solo**, sin el monorepo padre.
 
-## Configuración en Railway
+## Servicios Railway (mismo repo `osedhelu/DTS-backend`)
+
+| Servicio | Config file | Dominio público | Rol |
+|----------|-------------|-----------------|-----|
+| **DTS-backend** | `railway.toml` | ✅ Sí | API Django (Gunicorn) |
+| **DTS-celery-worker** | `railway.worker.toml` | ❌ No | Tareas async (email, push, pedidos…) |
+| **DTS-celery-beat** | `railway.beat.toml` | ❌ No | Tareas programadas (stats 02:00) |
+
+Todos usan el **mismo Dockerfile** y Root Directory `/`.
+
+---
+
+## 1. DTS-backend (API)
 
 | Campo | Valor |
 |-------|--------|
-| **Repositorio** | Repo del submódulo `backend` (no el monorepo) |
-| **Root Directory** | `/` (raíz del repo backend) |
-| **Builder** | Dockerfile (detectado vía `railway.toml`) |
-| **Dockerfile** | `Dockerfile` |
+| **Repositorio** | `osedhelu/DTS-backend` |
+| **Root Directory** | `/` |
+| **Config file** | `/railway.toml` (default) |
+| **Builder** | Dockerfile |
 
 > **No uses Railpack/Nixpacks** — PostGIS requiere GDAL en la imagen Docker.
 
-## Variables de entorno (DTS-backend)
-
-```env
-SECRET_KEY=<clave-larga-aleatoria>
-DEBUG=False
-ALLOWED_HOSTS=.up.railway.app,tu-servicio.up.railway.app
-CSRF_TRUSTED_ORIGINS=https://tu-servicio.up.railway.app
-
-DATABASE_URL=${{postgis.DATABASE_URL}}
-REDIS_URL=${{Redis.REDIS_URL}}
-
-RUN_MIGRATIONS=true
-GUNICORN_WORKERS=2
-GUNICORN_TIMEOUT=120
-
-SERVE_MEDIA=True
-MEDIA_PUBLIC_BASE_URL=https://tu-servicio.up.railway.app
-MEDIA_ROOT=/app/media
-
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=mailpit.railway.internal
-EMAIL_PORT=1025
-EMAIL_USE_TLS=False
-DEFAULT_FROM_EMAIL=noreply@dts.local
-```
-
-Genera dominio público en **Networking** y actualiza `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` y `MEDIA_PUBLIC_BASE_URL`.
-
-## Volumen persistente para imágenes (MEDIA)
-
-Sin volumen, las fotos de producto/logos **se pierden** en cada redeploy.
-
-| Campo | Valor |
-|-------|--------|
-| **Nombre volumen** | `dts-media` |
-| **Mount path** | `/app/media` |
-| **Variable** | `MEDIA_ROOT=/app/media` |
-
-Railway expone automáticamente `RAILWAY_VOLUME_MOUNT_PATH` al montar el volumen.
-
-**Crear vía CLI** (desde repo backend, con `railway link`):
-
-```bash
-railway volume add --mount-path /app/media
-```
-
-**Crear vía dashboard:** DTS-backend → Settings → Volumes → Add Volume → mount `/app/media`
-
-Tras crear el volumen, **redeploy** el servicio para activarlo.
-
-> Producción a largo plazo: considera S3 (`MEDIA_STORAGE_BACKEND=s3`). Ver [MEDIA_STORAGE.md](../docs/MEDIA_STORAGE.md) en el monorepo.
-
-## Variables corregidas (referencia Railway)
+### Variables (DTS-backend)
 
 ```env
 SECRET_KEY=<clave-larga-aleatoria>
@@ -89,51 +49,168 @@ EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 EMAIL_HOST=${{Mailpit.RAILWAY_PRIVATE_DOMAIN}}
 EMAIL_PORT=1025
 EMAIL_USE_TLS=False
+EMAIL_USE_SSL=False
 DEFAULT_FROM_EMAIL=noreply@dts.local
+
+WEB_URL=https://${{DTS-web-admin.RAILWAY_PUBLIC_DOMAIN}}
 ```
 
-No uses comillas en los valores del dashboard Railway.
+Sin comillas en el dashboard Railway.
 
-## Celery (servicios extra, mismo repo)
+### Volumen MEDIA (DTS-backend)
 
-**Worker:**
+| Campo | Valor |
+|-------|--------|
+| Nombre | `dts-media` |
+| Mount path | `/app/media` |
 
 ```bash
-uv run celery -A core worker --loglevel=info --concurrency=2
+railway volume add --mount-path /app/media   # con link a DTS-backend
 ```
 
-**Beat:**
+---
+
+## 2. DTS-celery-worker
+
+### Crear servicio
+
+1. Railway → **E commerce Disglobal** → **+ New** → **GitHub Repo**
+2. Repo: **`osedhelu/DTS-backend`**
+3. Nombre: **`DTS-celery-worker`**
+
+### Settings
+
+| Campo | Valor |
+|-------|--------|
+| Root Directory | `/` |
+| **Config file path** | `/railway.worker.toml` |
+| Public networking | **Off** (sin Generate Domain) |
+
+El archivo `railway.worker.toml` define el start command y **no** incluye healthcheck HTTP.
+
+### Variables (copiar de DTS-backend + estas)
+
+```env
+RUN_MIGRATIONS=false
+CELERY_CONCURRENCY=2
+
+SECRET_KEY=${{DTS-backend.SECRET_KEY}}
+DEBUG=False
+
+DATABASE_URL=${{postgis.DATABASE_URL}}
+REDIS_URL=${{Redis.REDIS_URL}}
+
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=${{Mailpit.RAILWAY_PRIVATE_DOMAIN}}
+EMAIL_PORT=1025
+EMAIL_USE_TLS=False
+EMAIL_USE_SSL=False
+DEFAULT_FROM_EMAIL=noreply@dts.local
+
+WEB_URL=https://${{DTS-web-admin.RAILWAY_PUBLIC_DOMAIN}}
+MEDIA_PUBLIC_BASE_URL=https://${{DTS-backend.RAILWAY_PUBLIC_DOMAIN}}
+```
+
+No necesita `ALLOWED_HOSTS` ni volumen `/app/media` (no sirve HTTP ni sube fotos).
+
+### Verificar
 
 ```bash
-uv run celery -A core beat --loglevel=info --schedule /tmp/celerybeat-schedule
+cd backend
+railway link -s DTS-celery-worker
+railway logs
 ```
 
-Mismas variables que la API. Sin networking público.
+Esperado: `celery@... ready.`
+
+---
+
+## 3. DTS-celery-beat
+
+### Crear servicio
+
+1. **+ New** → **GitHub Repo** → `osedhelu/DTS-backend`
+2. Nombre: **`DTS-celery-beat`**
+
+### Settings
+
+| Campo | Valor |
+|-------|--------|
+| Root Directory | `/` |
+| **Config file path** | `/railway.beat.toml` |
+| Public networking | **Off** |
+| **Replicas** | **1** (nunca más de una instancia de beat) |
+
+### Volumen opcional (persistir schedule)
+
+| Campo | Valor |
+|-------|--------|
+| Mount path | `/tmp` |
+
+### Variables
+
+Las mismas que **DTS-celery-worker** (`RUN_MIGRATIONS=false`, etc.).
+
+### Tarea programada
+
+| Tarea | Horario |
+|-------|---------|
+| `calculate_daily_stats` | 02:00 (America/Bogota) |
+
+### Verificar
+
+```bash
+railway link -s DTS-celery-beat
+railway logs
+```
+
+Esperado: `beat: Starting...`
+
+---
+
+## 4. Probar Celery end-to-end
+
+1. Worker y beat en **SUCCESS**
+2. Registro en web-admin: `/registro-comercio`
+3. El email debe aparecer en **Mailpit** (procesado por el worker)
+4. Al cambiar estado de un pedido, el worker ejecuta asignación/notificaciones
+
+---
 
 ## Superusuario
 
 ```bash
-railway login
-railway link
-railway service DTS-backend
-railway run uv run python manage.py createsuperuser
+cd backend
+railway link -s DTS-backend
+railway ssh uv run python manage.py migrate
+railway ssh uv run python manage.py createsuperuser
 ```
 
-## Verificar
+> `railway run` ejecuta en tu Mac (falla sin GDAL). Usa **`railway ssh`**.
+
+---
+
+## Verificar API
 
 ```bash
-curl https://tu-servicio.up.railway.app/api/v1/docs/
+curl -I https://dts-backend-production-c84e.up.railway.app/api/v1/docs/
 ```
+
+---
 
 ## Troubleshooting
 
 | Error | Solución |
 |-------|----------|
+| Worker CRASHED / healthcheck | Config file debe ser `railway.worker.toml` (sin healthcheck HTTP) |
 | `Could not find the GDAL library` | Builder = Dockerfile, no Railpack |
-| Root Directory = subcarpeta incorrecta | Debe ser `/` (raíz del repo backend) |
-| `DisallowedHost` / healthcheck | Añadir `healthcheck.railway.app` a `ALLOWED_HOSTS` |
-| Imágenes se pierden al redeploy | Volumen en `/app/media` + `MEDIA_ROOT=/app/media` |
-| DB connection failed | `DATABASE_URL=${{postgis.DATABASE_URL}}` |
+| `DisallowedHost` / healthcheck API | Añadir `healthcheck.railway.app` a `ALLOWED_HOSTS` |
+| Emails no llegan | Worker corriendo + `REDIS_URL` + Mailpit SMTP |
+| Beat duplicado | Solo 1 réplica de `DTS-celery-beat` |
+| Migrate conflictos | `RUN_MIGRATIONS=false` en worker y beat |
+| Links email a localhost | `WEB_URL` en DTS-backend apuntando al web-admin |
+
+---
 
 ## Desarrollo local con BD Railway
 

@@ -1,0 +1,17 @@
+# Railway — Celery worker (mismo repo/imagen que DTS-backend)
+# Guía: DEPLOY_RAILWAY.md → sección Celery
+#
+# En Railway (servicio DTS-celery-worker):
+#   Settings → Config file path → /railway.worker.toml
+#   Networking → sin dominio público
+#   Variables → RUN_MIGRATIONS=false + mismas que API (ver DEPLOY_RAILWAY.md)
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["**/*.py", "pyproject.toml", "uv.lock"]
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+startCommand = "sh -c 'uv run celery -A core worker --loglevel=info --concurrency ${CELERY_CONCURRENCY:-2}'"
