@@ -32,3 +32,18 @@ class RegisterMerchantWithStoreDTO:
     address: str = ""
     latitude: float = 0.0
     longitude: float = 0.0
+
+
+@dataclass(frozen=True)
+class UpdateDriverAvailabilityDTO:
+    driver_id: int
+    is_online: bool
+    latitude: float | None = None
+    longitude: float | None = None
+
+
+@dataclass(frozen=True)
+class DriverAvailabilityResult:
+    is_online: bool
+    latitude: float | None
+    longitude: float | None

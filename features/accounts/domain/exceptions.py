@@ -47,3 +47,7 @@ class PasswordResetTokenExpiredError(DomainValidationError):
 
 class PasswordResetTokenAlreadyUsedError(DomainValidationError):
     pass
+
+
+class DriverProfileNotFoundError(DomainValidationError):
+    pass

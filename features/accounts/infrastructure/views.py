@@ -35,11 +35,13 @@ from features.accounts.domain.exceptions import (
     VerificationTokenExpiredError,
     VerificationTokenNotFoundError,
 )
-from features.accounts.infrastructure.permissions import IsSuperAdmin
+from features.accounts.infrastructure.permissions import IsDriver, IsSuperAdmin
 from features.accounts.infrastructure.repositories import DjangoUserRepository
 from features.accounts.infrastructure.serializers import (
     DeviceTokenResponseSerializer,
     DeviceTokenSerializer,
+    DriverAvailabilityResponseSerializer,
+    DriverAvailabilitySerializer,
     MerchantRegisterResponseSerializer,
     MerchantRegisterSerializer,
     PasswordResetConfirmSerializer,
@@ -388,3 +390,52 @@ class DeviceTokenView(APIView):
             )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema_view(
+    patch=extend_schema(
+        request=DriverAvailabilitySerializer,
+        responses={
+            200: DriverAvailabilityResponseSerializer,
+            400: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
+class DriverAvailabilityView(APIView):
+    permission_classes = [IsAuthenticated, IsDriver]
+
+    def patch(self, request):
+        from features.accounts.application.dto import UpdateDriverAvailabilityDTO
+        from features.accounts.application.use_cases.update_driver_availability import (
+            UpdateDriverAvailabilityUseCase,
+        )
+        from features.accounts.domain.exceptions import DriverProfileNotFoundError
+
+        serializer = DriverAvailabilitySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        use_case = UpdateDriverAvailabilityUseCase()
+        try:
+            result = use_case.execute(
+                UpdateDriverAvailabilityDTO(
+                    driver_id=request.user.id,
+                    is_online=data["is_online"],
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
+                )
+            )
+        except DriverProfileNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(
+            DriverAvailabilityResponseSerializer(
+                {
+                    "is_online": result.is_online,
+                    "latitude": result.latitude,
+                    "longitude": result.longitude,
+                }
+            ).data,
+            status=status.HTTP_200_OK,
+        )

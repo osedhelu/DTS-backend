@@ -90,3 +90,34 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.UUIDField()
     password = serializers.CharField(min_length=8, write_only=True)
+
+
+class DriverAvailabilitySerializer(serializers.Serializer):
+    is_online = serializers.BooleanField()
+    latitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-180,
+        max_value=180,
+    )
+
+    def validate(self, attrs):
+        has_lat = attrs.get("latitude") is not None
+        has_lng = attrs.get("longitude") is not None
+        if has_lat ^ has_lng:
+            raise serializers.ValidationError(
+                "Debes enviar latitude y longitude juntos."
+            )
+        return attrs
+
+
+class DriverAvailabilityResponseSerializer(serializers.Serializer):
+    is_online = serializers.BooleanField()
+    latitude = serializers.FloatField(allow_null=True)
+    longitude = serializers.FloatField(allow_null=True)

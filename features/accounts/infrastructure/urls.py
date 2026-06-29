@@ -5,6 +5,7 @@ from features.accounts.infrastructure.admin_merchant_views import AdminMerchantL
 from features.accounts.infrastructure.views import (
     AdminDashboardView,
     DeviceTokenView,
+    DriverAvailabilityView,
     LoginView,
     MerchantRegisterView,
     PasswordResetConfirmView,
@@ -37,6 +38,11 @@ urlpatterns = [
     ),
     path("refresh/", RefreshView.as_view(), name="accounts-refresh"),
     path("device-token/", DeviceTokenView.as_view(), name="accounts-device-token"),
+    path(
+        "driver/availability/",
+        DriverAvailabilityView.as_view(),
+        name="accounts-driver-availability",
+    ),
     path("admin/dashboard/", AdminDashboardView.as_view(), name="accounts-admin-dashboard"),
     path("admin/merchants/", AdminMerchantListView.as_view(), name="accounts-admin-merchants"),
     path("admin/map/", AdminOperationsMapView.as_view(), name="accounts-admin-map"),
