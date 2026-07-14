@@ -121,3 +121,21 @@ class DriverAvailabilityResponseSerializer(serializers.Serializer):
     is_online = serializers.BooleanField()
     latitude = serializers.FloatField(allow_null=True)
     longitude = serializers.FloatField(allow_null=True)
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    id_token = serializers.CharField()
+    role = serializers.ChoiceField(
+        choices=[UserRole.CUSTOMER, UserRole.DRIVER],
+        required=False,
+        default=UserRole.CUSTOMER,
+    )
+
+
+class AppleAuthSerializer(serializers.Serializer):
+    id_token = serializers.CharField()
+    role = serializers.ChoiceField(
+        choices=[UserRole.CUSTOMER, UserRole.DRIVER],
+        required=False,
+        default=UserRole.CUSTOMER,
+    )

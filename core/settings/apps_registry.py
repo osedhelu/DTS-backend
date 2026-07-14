@@ -24,7 +24,9 @@ def discover_django_apps(base_dir: Path) -> list[str]:
 
 
 def build_installed_apps(base_dir: Path) -> list[str]:
+    # daphne debe ir antes de staticfiles para que runserver use ASGI (Channels).
     core_apps = [
+        "daphne",
         "django.contrib.admin",
         "django.contrib.auth",
         "django.contrib.contenttypes",
@@ -32,6 +34,7 @@ def build_installed_apps(base_dir: Path) -> list[str]:
         "django.contrib.messages",
         "django.contrib.staticfiles",
         "django.contrib.gis",
+        "channels",
         "rest_framework",
         "corsheaders",
         "drf_spectacular",

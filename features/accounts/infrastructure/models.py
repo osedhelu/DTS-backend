@@ -51,6 +51,17 @@ class CustomUser(AbstractUser):
         default=UserRole.CUSTOMER,
     )
     email_verified = models.BooleanField(default=False)
+    google_uid = models.CharField(max_length=128, unique=True, null=True, blank=True)
+    apple_uid = models.CharField(max_length=128, unique=True, null=True, blank=True)
+    auth_provider = models.CharField(
+        max_length=20,
+        choices=[
+            ("local", "local"),
+            ("google", "google"),
+            ("apple", "apple"),
+        ],
+        default="local",
+    )
 
     objects = CustomUserManager()
 

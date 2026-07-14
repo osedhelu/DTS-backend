@@ -43,6 +43,16 @@ DATABASES = build_databases(env, BASE_DIR)
 
 REDIS_URL = build_redis_url(env)
 
+# Django Channels — Redis channel layer (T5.1.1). Tests usan InMemoryChannelLayer.
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+        },
+    },
+}
+
 AUTH_USER_MODEL = "accounts.CustomUser"
 
 LANGUAGE_CODE = "es-co"
@@ -140,7 +150,16 @@ EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@dts.local")
 WEB_URL = env("WEB_URL", default="http://localhost:3000")
 
+# Multi Firebase: customer (discorp) + driver (dtsdrop). FCM_CREDENTIALS_PATH = fallback/compat.
 FCM_CREDENTIALS_PATH = env("FCM_CREDENTIALS_PATH", default=None)
+FIREBASE_CUSTOMER_CREDENTIALS_PATH = env(
+    "FIREBASE_CUSTOMER_CREDENTIALS_PATH",
+    default=None,
+) or FCM_CREDENTIALS_PATH
+FIREBASE_DRIVER_CREDENTIALS_PATH = env(
+    "FIREBASE_DRIVER_CREDENTIALS_PATH",
+    default=None,
+) or FCM_CREDENTIALS_PATH
 
 TEMPLATES = [
     {

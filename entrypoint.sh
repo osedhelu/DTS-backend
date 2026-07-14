@@ -1,6 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+_write_firebase_json() {
+  local credentials_path="$1"
+  local credentials_json="$2"
+  if [[ -z "$credentials_path" || -z "$credentials_json" ]]; then
+    return 0
+  fi
+  local credentials_dir
+  credentials_dir="$(dirname "$credentials_path")"
+  mkdir -p "$credentials_dir"
+  printf '%s' "$credentials_json" >"$credentials_path"
+  chmod 600 "$credentials_path"
+  echo "==> Credenciales Firebase materializadas en ${credentials_path}"
+}
+
+materialize_fcm_credentials() {
+  # Compat single-project
+  _write_firebase_json \
+    "${FCM_CREDENTIALS_PATH:-}" \
+    "${FIREBASE_SERVICE_ACCOUNT_JSON:-}"
+
+  # Multi Firebase: customer (discorp) + driver (dtsdrop)
+  _write_firebase_json \
+    "${FIREBASE_CUSTOMER_CREDENTIALS_PATH:-}" \
+    "${FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON:-${FIREBASE_SERVICE_ACCOUNT_JSON:-}}"
+  _write_firebase_json \
+    "${FIREBASE_DRIVER_CREDENTIALS_PATH:-}" \
+    "${FIREBASE_DRIVER_SERVICE_ACCOUNT_JSON:-}"
+}
+
 wait_for_db() {
   echo "==> Esperando PostgreSQL..."
   until uv run --no-dev python - <<'PY'
@@ -52,6 +81,7 @@ PY
 }
 
 wait_for_db
+materialize_fcm_credentials
 
 # Worker/beat: RUN_MIGRATIONS=false (solo la API migra y collectstatic).
 if [[ "${RUN_MIGRATIONS:-true}" == "true" ]]; then

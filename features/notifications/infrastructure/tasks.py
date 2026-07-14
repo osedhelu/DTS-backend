@@ -44,7 +44,6 @@ def execute_order_push(order_id: int, order_status: str) -> str:
     if not OrderStatusNotificationMapper.supports_status(status):
         return f"skipped:{order_id}:unsupported_status"
 
-    use_case = _build_send_push_use_case()
     user_ids = resolve_recipient_user_ids(
         order,
         status,
@@ -53,6 +52,8 @@ def execute_order_push(order_id: int, order_status: str) -> str:
 
     message_ids: list[str] = []
     for user_id in user_ids:
+        role = _role_for_user(user_id)
+        use_case = _build_send_push_use_case(get_fcm_client(role=role))
         message_ids.extend(
             use_case.execute(
                 SendPushDTO(
@@ -64,6 +65,18 @@ def execute_order_push(order_id: int, order_status: str) -> str:
         )
 
     return f"sent:{order_id}:{len(message_ids)}"
+
+
+def _role_for_user(user_id: int) -> str:
+    from features.accounts.domain.entities import UserRole
+    from features.accounts.infrastructure.models import CustomUser
+
+    role = (
+        CustomUser.objects.filter(pk=user_id)
+        .values_list("role", flat=True)
+        .first()
+    )
+    return role or UserRole.CUSTOMER
 
 
 @shared_task(

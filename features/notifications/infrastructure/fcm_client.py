@@ -5,6 +5,10 @@ from typing import Any
 
 from django.conf import settings
 
+from features.accounts.infrastructure.firebase_apps import (
+    FIREBASE_APP_CUSTOMER,
+    firebase_app_for_role,
+)
 from features.notifications.domain.exceptions import FCMNotConfiguredError, FCMSendError
 
 
@@ -17,10 +21,17 @@ class PushPayload:
 
 
 class FCMClient:
-    """Cliente FCM vía firebase-admin."""
+    """Cliente FCM vía firebase-admin (app nombrada por proyecto)."""
 
-    def __init__(self, credentials_path: str | None = None) -> None:
+    def __init__(
+        self,
+        credentials_path: str | None = None,
+        *,
+        app_name: str = FIREBASE_APP_CUSTOMER,
+    ) -> None:
         self._credentials_path = credentials_path
+        self._app_name = app_name
+        self._app = None
         self._initialized = False
 
     def send(
@@ -34,7 +45,7 @@ class FCMClient:
         return self.send_payload(payload)
 
     def send_payload(self, payload: PushPayload) -> str:
-        self._ensure_initialized()
+        app = self._ensure_initialized()
 
         from firebase_admin import messaging
 
@@ -48,13 +59,13 @@ class FCMClient:
         )
 
         try:
-            return messaging.send(message)
+            return messaging.send(message, app=app)
         except Exception as exc:
             raise FCMSendError(f"No se pudo enviar push FCM: {exc}") from exc
 
-    def _ensure_initialized(self) -> None:
+    def _ensure_initialized(self):
         if self._initialized:
-            return
+            return self._app
 
         if not self._credentials_path:
             raise FCMNotConfiguredError(
@@ -64,16 +75,35 @@ class FCMClient:
         import firebase_admin
         from firebase_admin import credentials
 
-        if not firebase_admin._apps:
+        try:
+            self._app = firebase_admin.get_app(self._app_name)
+        except ValueError:
             cred = credentials.Certificate(self._credentials_path)
-            firebase_admin.initialize_app(cred)
+            self._app = firebase_admin.initialize_app(cred, name=self._app_name)
 
         self._initialized = True
+        return self._app
 
 
 def get_fcm_client(**overrides: Any) -> FCMClient:
-    credentials_path = overrides.get(
-        "credentials_path",
-        getattr(settings, "FCM_CREDENTIALS_PATH", None),
-    )
-    return FCMClient(credentials_path=credentials_path)
+    role = overrides.get("role")
+    app_name = overrides.get("app_name")
+    if app_name is None and role is not None:
+        app_name = firebase_app_for_role(str(role))
+    if app_name is None:
+        app_name = FIREBASE_APP_CUSTOMER
+
+    credentials_path = overrides.get("credentials_path")
+    if credentials_path is None:
+        if app_name == "driver":
+            credentials_path = (
+                getattr(settings, "FIREBASE_DRIVER_CREDENTIALS_PATH", None)
+                or getattr(settings, "FCM_CREDENTIALS_PATH", None)
+            )
+        else:
+            credentials_path = (
+                getattr(settings, "FIREBASE_CUSTOMER_CREDENTIALS_PATH", None)
+                or getattr(settings, "FCM_CREDENTIALS_PATH", None)
+            )
+
+    return FCMClient(credentials_path=credentials_path, app_name=app_name)

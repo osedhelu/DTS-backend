@@ -51,3 +51,11 @@ class PasswordResetTokenAlreadyUsedError(DomainValidationError):
 
 class DriverProfileNotFoundError(DomainValidationError):
     pass
+
+
+class InvalidGoogleTokenError(DomainValidationError):
+    pass
+
+
+class GoogleAccountConflictError(DomainValidationError):
+    pass

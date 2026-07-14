@@ -53,7 +53,81 @@ EMAIL_USE_SSL=False
 DEFAULT_FROM_EMAIL=noreply@dts.local
 
 WEB_URL=https://${{DTS-web-admin.RAILWAY_PUBLIC_DOMAIN}}
+
+# Multi Firebase Admin SDK (apps nombradas customer + driver)
+# Customer = discorp-4a37b (flutter-customer Auth + FCM)
+# Driver   = dtsdrop-85330 (flutter-driver Auth + FCM)
+FIREBASE_CUSTOMER_CREDENTIALS_PATH=/app/secrets/firebase-customer.json
+FIREBASE_DRIVER_CREDENTIALS_PATH=/app/secrets/firebase-driver.json
+# Contenido JSON (una línea cada uno). El entrypoint los materializa al arrancar.
+# FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+# FIREBASE_DRIVER_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+
+# Compat (opcional): un solo JSON legacy → se usa como customer + fallback
+# FCM_CREDENTIALS_PATH=/app/secrets/firebase-service-account.json
+# FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 ```
+
+### Dual service accounts (obligatorio para Google/Apple driver + push ambos)
+
+1. En Firebase Console → **discorp-4a37b** → Project settings → Service accounts → Generate new private key → JSON de **customer**.
+2. En Firebase Console → **dtsdrop-85330** → mismo flujo → JSON de **driver**.
+3. En Railway (servicios **DTS-backend** y **DTS-celery-worker**), variables:
+
+| Variable | Origen |
+|----------|--------|
+| `FIREBASE_CUSTOMER_CREDENTIALS_PATH` | `/app/secrets/firebase-customer.json` |
+| `FIREBASE_DRIVER_CREDENTIALS_PATH` | `/app/secrets/firebase-driver.json` |
+| `FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON` | Contenido del JSON discorp (una línea) |
+| `FIREBASE_DRIVER_SERVICE_ACCOUNT_JSON` | Contenido del JSON dtsdrop (una línea) |
+
+`entrypoint.sh` escribe ambos archivos al arrancar. Si solo existe `FIREBASE_SERVICE_ACCOUNT_JSON` (legacy), se materializa como customer vía compat.
+
+Tras setear secrets: **redeploy** API + worker (y beat si aplica) y confirmar migración `0008_customuser_apple_auth` (`RUN_MIGRATIONS=true` en API).
+
+Script (desde `backend/`):
+
+```bash
+# Dual (recomendado)
+FIREBASE_CUSTOMER_JSON_FILE=~/Downloads/discorp-adminsdk.json \
+FIREBASE_DRIVER_JSON_FILE=~/Downloads/dtsdrop-adminsdk.json \
+  ./scripts/setup-railway-fcm.sh
+
+# Solo customer (compat)
+FIREBASE_JSON_FILE=~/Downloads/discorp-adminsdk.json ./scripts/setup-railway-fcm.sh
+```
+
+Luego:
+
+```bash
+railway redeploy --service DTS-backend
+railway redeploy --service DTS-backend-worker
+```
+
+**DTS-celery-worker** debe tener las **mismas** variables duales para verificar tokens no aplica en worker, pero **sí** para FCM por rol (customer → app `customer`, driver → app `driver`).
+
+Verificación rápida tras login en app:
+
+```bash
+railway ssh --service DTS-backend
+uv run python manage.py shell -c "from features.accounts.infrastructure.models import DeviceToken; print(DeviceToken.objects.filter(is_active=True).count())"
+```
+
+Endpoints Google/Apple (401 con token inválido, no 404):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+  https://dts-backend-production-c84e.up.railway.app/api/v1/accounts/auth/google/ \
+  -H "Content-Type: application/json" \
+  -d '{"id_token":"test","role":"driver"}'
+
+curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+  https://dts-backend-production-c84e.up.railway.app/api/v1/accounts/auth/apple/ \
+  -H "Content-Type: application/json" \
+  -d '{"id_token":"test","role":"driver"}'
+```
+
+Push manual: cambiar un pedido a `ON_THE_WAY` en admin o usar Firebase Console → Cloud Messaging **del proyecto correcto** (discorp vs dtsdrop) con el token del dispositivo.
 
 Sin comillas en el dashboard Railway.
 
@@ -109,6 +183,10 @@ DEFAULT_FROM_EMAIL=noreply@dts.local
 
 WEB_URL=https://${{DTS-web-admin.RAILWAY_PUBLIC_DOMAIN}}
 MEDIA_PUBLIC_BASE_URL=https://${{DTS-backend.RAILWAY_PUBLIC_DOMAIN}}
+
+FIREBASE_CUSTOMER_CREDENTIALS_PATH=/app/secrets/firebase-customer.json
+FIREBASE_DRIVER_CREDENTIALS_PATH=/app/secrets/firebase-driver.json
+# Copiar FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON y FIREBASE_DRIVER_SERVICE_ACCOUNT_JSON desde DTS-backend
 ```
 
 No necesita `ALLOWED_HOSTS` ni volumen `/app/media` (no sirve HTTP ni sube fotos).

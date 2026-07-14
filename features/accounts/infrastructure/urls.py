@@ -4,8 +4,10 @@ from features.accounts.infrastructure.admin_map_views import AdminOperationsMapV
 from features.accounts.infrastructure.admin_merchant_views import AdminMerchantListView
 from features.accounts.infrastructure.views import (
     AdminDashboardView,
+    AppleAuthView,
     DeviceTokenView,
     DriverAvailabilityView,
+    GoogleAuthView,
     LoginView,
     MerchantRegisterView,
     PasswordResetConfirmView,
@@ -26,6 +28,8 @@ urlpatterns = [
         name="accounts-resend-verification",
     ),
     path("login/", LoginView.as_view(), name="accounts-login"),
+    path("auth/google/", GoogleAuthView.as_view(), name="accounts-google-auth"),
+    path("auth/apple/", AppleAuthView.as_view(), name="accounts-apple-auth"),
     path(
         "password-reset/request/",
         PasswordResetRequestView.as_view(),

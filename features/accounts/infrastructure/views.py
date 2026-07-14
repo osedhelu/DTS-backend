@@ -28,6 +28,8 @@ from features.accounts.domain.exceptions import (
     DomainValidationError,
     DuplicateEmailError,
     EmailAlreadyVerifiedError,
+    GoogleAccountConflictError,
+    InvalidGoogleTokenError,
     PasswordResetTokenAlreadyUsedError,
     PasswordResetTokenExpiredError,
     PasswordResetTokenNotFoundError,
@@ -38,10 +40,12 @@ from features.accounts.domain.exceptions import (
 from features.accounts.infrastructure.permissions import IsDriver, IsSuperAdmin
 from features.accounts.infrastructure.repositories import DjangoUserRepository
 from features.accounts.infrastructure.serializers import (
+    AppleAuthSerializer,
     DeviceTokenResponseSerializer,
     DeviceTokenSerializer,
     DriverAvailabilityResponseSerializer,
     DriverAvailabilitySerializer,
+    GoogleAuthSerializer,
     MerchantRegisterResponseSerializer,
     MerchantRegisterSerializer,
     PasswordResetConfirmSerializer,
@@ -439,3 +443,89 @@ class DriverAvailabilityView(APIView):
             ).data,
             status=status.HTTP_200_OK,
         )
+
+
+@extend_schema_view(
+    post=extend_schema(
+        request=GoogleAuthSerializer,
+        responses={
+            200: inline_serializer(
+                name="GoogleAuthResponse",
+                fields={
+                    "access": serializers.CharField(),
+                    "refresh": serializers.CharField(),
+                },
+            ),
+            400: DetailErrorSerializer,
+            401: DetailErrorSerializer,
+        },
+    ),
+)
+class GoogleAuthView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from features.accounts.application.use_cases.google_sign_in import (
+            GoogleSignInUseCase,
+        )
+        from features.notifications.domain.exceptions import FCMNotConfiguredError
+
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        use_case = GoogleSignInUseCase()
+        try:
+            tokens = use_case.execute(
+                serializer.validated_data["id_token"],
+                role=serializer.validated_data.get("role") or UserRole.CUSTOMER,
+            )
+        except InvalidGoogleTokenError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+        except GoogleAccountConflictError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except FCMNotConfiguredError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(tokens, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    request=AppleAuthSerializer,
+    responses={
+        200: inline_serializer(
+            name="AppleAuthResponse",
+            fields={
+                "access": serializers.CharField(),
+                "refresh": serializers.CharField(),
+            },
+        ),
+        400: DetailErrorSerializer,
+        401: DetailErrorSerializer,
+    },
+)
+class AppleAuthView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from features.accounts.application.use_cases.apple_sign_in import (
+            AppleSignInUseCase,
+        )
+        from features.notifications.domain.exceptions import FCMNotConfiguredError
+
+        serializer = AppleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        use_case = AppleSignInUseCase()
+        try:
+            tokens = use_case.execute(
+                serializer.validated_data["id_token"],
+                role=serializer.validated_data.get("role") or UserRole.CUSTOMER,
+            )
+        except InvalidGoogleTokenError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+        except GoogleAccountConflictError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except FCMNotConfiguredError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(tokens, status=status.HTTP_200_OK)
