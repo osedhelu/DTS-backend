@@ -3,14 +3,17 @@ from __future__ import annotations
 import uuid
 
 from django.db import transaction
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from features.accounts.domain.entities import UserRole
-from features.accounts.domain.exceptions import GoogleAccountConflictError
+from features.accounts.domain.exceptions import (
+    GoogleAccountConflictError,
+    InvalidGoogleTokenError,
+)
 from features.accounts.infrastructure.firebase_token_verifier import (
     FirebaseTokenVerifier,
     VerifiedSocialIdentity,
 )
+from features.accounts.infrastructure.jwt_tokens import issue_tokens_for_user
 from features.accounts.infrastructure.models import (
     CustomerProfile,
     CustomUser,
@@ -28,12 +31,12 @@ class GoogleSignInUseCase:
                 "Solo se admite role customer o driver para Google Sign-In"
             )
         identity = self._verifier.verify_google_id_token(id_token, role=role)
+        if not identity.email:
+            raise InvalidGoogleTokenError(
+                "Token de Google sin email; no se puede crear la cuenta"
+            )
         user = self._get_or_create_user(identity, role=role, provider="google")
-        refresh = RefreshToken.for_user(user)
-        return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-        }
+        return issue_tokens_for_user(user)
 
     @transaction.atomic
     def _get_or_create_user(
@@ -51,6 +54,7 @@ class GoogleSignInUseCase:
                 )
             return user
 
+        assert identity.email is not None
         user = CustomUser.objects.filter(email=identity.email).first()
         if user is not None:
             if user.google_uid and user.google_uid != identity.uid:

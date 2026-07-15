@@ -139,3 +139,6 @@ class AppleAuthSerializer(serializers.Serializer):
         required=False,
         default=UserRole.CUSTOMER,
     )
+    # Solo disponibles en el primer Sign in with Apple (Apple no los reenvía).
+    email = serializers.EmailField(required=False, allow_blank=True)
+    full_name = serializers.CharField(required=False, allow_blank=True, max_length=150)

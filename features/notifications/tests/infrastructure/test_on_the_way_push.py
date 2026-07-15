@@ -117,6 +117,7 @@ def test_push_sent_on_the_way():
             body="¡Tu pedido ya salió! Va en camino",
             data={
                 "notification_type": "order_on_the_way",
+                "type": "on_the_way",
                 "order_id": str(order.id),
                 "order_status": "on_the_way",
             },

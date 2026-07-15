@@ -103,8 +103,8 @@ def dispatch_order_push_task(self, order_id: int, order_status: str) -> str:
     name="features.notifications.infrastructure.tasks.notify_drivers_new_order_task",
 )
 def notify_drivers_new_order_task(self, order_id: int) -> str:
-    """Stub — push a conductores online para pedidos listos para recoger."""
-    return f"pending-drivers:{order_id}"
+    """Push FCM a conductores online (proyecto dtsdrop) cuando el pedido está listo."""
+    return execute_order_push(order_id, OrderStatus.READY_FOR_PICKUP)
 
 
 def _build_send_order_email_use_case() -> SendOrderEmailUseCase:

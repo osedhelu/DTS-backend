@@ -110,6 +110,7 @@ def test_send_push_task_calls_fcm():
             body="Tu pedido fue aceptado",
             data={
                 "notification_type": "order_accepted",
+                "type": "accepted_by_merchant",
                 "order_id": str(order.id),
                 "order_status": "accepted_by_merchant",
             },

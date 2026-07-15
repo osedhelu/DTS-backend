@@ -1,3 +1,5 @@
+"""Verificación de ID tokens Firebase contra el proyecto customer o driver."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,7 +7,6 @@ from dataclasses import dataclass
 from features.accounts.domain.exceptions import InvalidGoogleTokenError
 from features.accounts.infrastructure.firebase_apps import (
     FIREBASE_APP_CUSTOMER,
-    FIREBASE_APP_DRIVER,
     ensure_firebase_app,
     firebase_app_for_role,
 )
@@ -14,7 +15,7 @@ from features.accounts.infrastructure.firebase_apps import (
 @dataclass(frozen=True, slots=True)
 class VerifiedSocialIdentity:
     uid: str
-    email: str
+    email: str | None
     display_name: str
     provider: str = "google"  # google | apple | ...
 
@@ -24,7 +25,7 @@ VerifiedGoogleIdentity = VerifiedSocialIdentity
 
 
 class FirebaseTokenVerifier:
-    """Verifica ID tokens Firebase contra el proyecto customer o driver."""
+    """Verifica ID tokens Firebase contra el proyecto del role (sin fallback cruzado)."""
 
     def verify_id_token(
         self,
@@ -32,6 +33,7 @@ class FirebaseTokenVerifier:
         *,
         role: str = "customer",
         expected_provider: str | None = None,
+        allow_missing_email: bool = False,
     ) -> VerifiedSocialIdentity:
         app_name = firebase_app_for_role(role)
         app = ensure_firebase_app(app_name)
@@ -41,21 +43,14 @@ class FirebaseTokenVerifier:
         try:
             decoded = auth.verify_id_token(id_token, app=app)
         except Exception as exc:
-            # Reintento con el otro proyecto (migración / config parcial).
-            alt = (
-                FIREBASE_APP_DRIVER
-                if app_name == FIREBASE_APP_CUSTOMER
-                else FIREBASE_APP_CUSTOMER
-            )
-            try:
-                alt_app = ensure_firebase_app(alt)
-                decoded = auth.verify_id_token(id_token, app=alt_app)
-            except Exception:
-                raise InvalidGoogleTokenError("Token de Firebase inválido") from exc
+            raise InvalidGoogleTokenError("Token de Firebase inválido") from exc
 
-        email = decoded.get("email")
+        email_raw = decoded.get("email")
+        email = str(email_raw).lower() if email_raw else None
         uid = decoded.get("uid") or decoded.get("sub")
-        if not email or not uid:
+        if not uid:
+            raise InvalidGoogleTokenError("Token de Firebase sin uid")
+        if not email and not allow_missing_email:
             raise InvalidGoogleTokenError("Token de Firebase sin email o uid")
 
         provider = str(
@@ -63,7 +58,6 @@ class FirebaseTokenVerifier:
             or decoded.get("sign_in_provider")
             or "unknown"
         )
-        # Normalizar
         if provider in ("google.com", "google"):
             provider = "google"
         elif provider in ("apple.com", "apple"):
@@ -74,10 +68,14 @@ class FirebaseTokenVerifier:
                 f"Se esperaba proveedor '{expected_provider}', recibido '{provider}'"
             )
 
+        display = decoded.get("name")
+        if not display:
+            display = email.split("@")[0] if email else str(uid)[:32]
+
         return VerifiedSocialIdentity(
             uid=str(uid),
-            email=str(email).lower(),
-            display_name=str(decoded.get("name") or email.split("@")[0]),
+            email=email,
+            display_name=str(display),
             provider=provider,
         )
 
@@ -92,7 +90,10 @@ class FirebaseTokenVerifier:
         self, id_token: str, *, role: str = "customer"
     ) -> VerifiedSocialIdentity:
         return self.verify_id_token(
-            id_token, role=role, expected_provider="apple"
+            id_token,
+            role=role,
+            expected_provider="apple",
+            allow_missing_email=True,
         )
 
 

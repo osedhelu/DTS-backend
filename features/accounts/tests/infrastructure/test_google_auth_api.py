@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from rest_framework import status
+from rest_framework_simplejwt.tokens import AccessToken
 
 from features.accounts.domain.entities import UserRole
 from features.accounts.infrastructure.firebase_token_verifier import VerifiedGoogleIdentity
@@ -29,6 +30,10 @@ def test_google_signin_creates_customer(api_client):
     assert response.status_code == status.HTTP_200_OK
     assert "access" in response.data
     assert "refresh" in response.data
+    claims = AccessToken(response.data["access"])
+    assert claims["role"] == UserRole.CUSTOMER
+    assert claims["email"] == "newgoogle@test.com"
+    assert claims["user_id"] == CustomUser.objects.get(email="newgoogle@test.com").id
     user = CustomUser.objects.get(email="newgoogle@test.com")
     assert user.role == UserRole.CUSTOMER
     assert user.google_uid == "google-uid-123"
@@ -115,6 +120,47 @@ def test_google_signin_creates_driver(api_client):
     user = CustomUser.objects.get(email="driver.google@test.com")
     assert user.role == UserRole.DRIVER
     assert DriverProfile.objects.filter(user=user).exists()
+    claims = AccessToken(response.data["access"])
+    assert claims["role"] == UserRole.DRIVER
+    assert claims["user_id"] == user.id
+    assert claims["email"] == "driver.google@test.com"
     verifier_cls.return_value.verify_google_id_token.assert_called_with(
         "valid-token", role="driver"
     )
+
+
+@pytest.mark.django_db
+def test_google_signin_rejects_role_conflict(api_client):
+    from features.accounts.infrastructure.models import DriverProfile
+
+    user = CustomUser.objects.create_user(
+        username="as_customer",
+        email="shared@test.com",
+        password="unused",
+        role=UserRole.CUSTOMER,
+        google_uid="google-shared",
+        auth_provider="google",
+        email_verified=True,
+    )
+    user.set_unusable_password()
+    user.save()
+    CustomerProfile.objects.create(user=user, phone="")
+
+    identity = VerifiedGoogleIdentity(
+        uid="google-shared",
+        email="shared@test.com",
+        display_name="Shared",
+        provider="google",
+    )
+    with patch(
+        "features.accounts.application.use_cases.google_sign_in.FirebaseTokenVerifier"
+    ) as verifier_cls:
+        verifier_cls.return_value.verify_google_id_token.return_value = identity
+        response = api_client.post(
+            "/api/v1/accounts/auth/google/",
+            {"id_token": "valid-token", "role": "driver"},
+            format="json",
+        )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert not DriverProfile.objects.filter(user=user).exists()

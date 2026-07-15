@@ -61,3 +61,17 @@ def test_fcm_client_requires_credentials(mock_ensure_app):
 
     with pytest.raises(FCMNotConfiguredError, match="Credenciales Firebase"):
         client.send(token="t", title="T", body="B")
+
+
+def test_get_fcm_client_uses_driver_app_for_driver_role():
+    from features.notifications.infrastructure.fcm_client import get_fcm_client
+
+    client = get_fcm_client(role="driver")
+    assert client._app_name == "driver"
+
+
+def test_get_fcm_client_uses_customer_app_by_default():
+    from features.notifications.infrastructure.fcm_client import get_fcm_client
+
+    client = get_fcm_client(role="customer")
+    assert client._app_name == "customer"

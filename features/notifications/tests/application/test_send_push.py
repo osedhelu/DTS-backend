@@ -35,6 +35,7 @@ def test_send_push_use_case_calls_fcm_for_each_token():
         body="Tu pedido fue aceptado",
         data={
             "notification_type": "order_accepted",
+            "type": "accepted_by_merchant",
             "order_id": "42",
             "order_status": "accepted_by_merchant",
         },

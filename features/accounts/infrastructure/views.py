@@ -289,11 +289,11 @@ class PasswordResetConfirmView(APIView):
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
-        token = super().get_token(user)
-        token["role"] = user.role
-        token["email"] = user.email
-        token["user_id"] = user.id
-        return token
+        from features.accounts.infrastructure.jwt_tokens import (
+            build_refresh_token_for_user,
+        )
+
+        return build_refresh_token_for_user(user)
 
 
 @extend_schema_view(
@@ -516,10 +516,15 @@ class AppleAuthView(APIView):
         serializer.is_valid(raise_exception=True)
 
         use_case = AppleSignInUseCase()
+        data = serializer.validated_data
+        email = (data.get("email") or "").strip() or None
+        full_name = (data.get("full_name") or "").strip() or None
         try:
             tokens = use_case.execute(
-                serializer.validated_data["id_token"],
-                role=serializer.validated_data.get("role") or UserRole.CUSTOMER,
+                data["id_token"],
+                role=data.get("role") or UserRole.CUSTOMER,
+                email=email,
+                full_name=full_name,
             )
         except InvalidGoogleTokenError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)

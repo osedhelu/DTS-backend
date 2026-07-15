@@ -23,6 +23,8 @@ class SendPushUseCase:
 
         data = {
             "notification_type": template.notification_type.value,
+            # Contrato Flutter (docs/FLUTTER_API.md): type = OrderStatus
+            "type": dto.order_status.value,
             "order_id": str(dto.order_id),
             "order_status": dto.order_status.value,
         }

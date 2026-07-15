@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from django.db import transaction
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from features.accounts.domain.entities import UserRole
 from features.accounts.domain.exceptions import GoogleAccountConflictError
@@ -9,6 +8,7 @@ from features.accounts.infrastructure.firebase_token_verifier import (
     FirebaseTokenVerifier,
     VerifiedSocialIdentity,
 )
+from features.accounts.infrastructure.jwt_tokens import issue_tokens_for_user
 from features.accounts.infrastructure.models import (
     CustomerProfile,
     CustomUser,
@@ -20,18 +20,50 @@ class AppleSignInUseCase:
     def __init__(self, verifier: FirebaseTokenVerifier | None = None) -> None:
         self._verifier = verifier or FirebaseTokenVerifier()
 
-    def execute(self, id_token: str, role: str = UserRole.CUSTOMER) -> dict[str, str]:
+    def execute(
+        self,
+        id_token: str,
+        role: str = UserRole.CUSTOMER,
+        *,
+        email: str | None = None,
+        full_name: str | None = None,
+    ) -> dict[str, str]:
         if role not in (UserRole.CUSTOMER, UserRole.DRIVER):
             raise GoogleAccountConflictError(
                 "Solo se admite role customer o driver para Apple Sign-In"
             )
         identity = self._verifier.verify_apple_id_token(id_token, role=role)
-        user = self._get_or_create_user(identity, role=role)
-        refresh = RefreshToken.for_user(user)
-        return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-        }
+        resolved = self._resolve_identity(
+            identity, email=email, full_name=full_name
+        )
+        user = self._get_or_create_user(resolved, role=role)
+        return issue_tokens_for_user(user)
+
+    def _resolve_identity(
+        self,
+        identity: VerifiedSocialIdentity,
+        *,
+        email: str | None,
+        full_name: str | None,
+    ) -> VerifiedSocialIdentity:
+        resolved_email = identity.email or (
+            email.lower().strip() if email else None
+        )
+        if resolved_email is None:
+            # Usuario existente se resuelve por apple_uid; placeholder solo para altas.
+            existing = CustomUser.objects.filter(apple_uid=identity.uid).first()
+            if existing is not None:
+                resolved_email = existing.email
+            else:
+                resolved_email = f"{identity.uid}@privaterelay.appleid.local"
+
+        display = full_name.strip() if full_name else identity.display_name
+        return VerifiedSocialIdentity(
+            uid=identity.uid,
+            email=resolved_email,
+            display_name=display or resolved_email.split("@")[0],
+            provider="apple",
+        )
 
     @transaction.atomic
     def _get_or_create_user(
@@ -45,6 +77,7 @@ class AppleSignInUseCase:
                 )
             return user
 
+        assert identity.email is not None
         user = CustomUser.objects.filter(email=identity.email).first()
         if user is not None:
             if user.apple_uid and user.apple_uid != identity.uid:
