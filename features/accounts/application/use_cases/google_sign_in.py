@@ -59,7 +59,8 @@ class GoogleSignInUseCase:
                 )
                 # #endregion
                 raise GoogleAccountConflictError(
-                    "Esta cuenta Google pertenece a otro rol; usa la app correcta"
+                    f"Esta cuenta Google ya es '{user.role}' y pediste '{role}'. "
+                    "Usa la app correcta u otra cuenta Google."
                 )
             return user
 
@@ -73,14 +74,17 @@ class GoogleSignInUseCase:
             if user.role != role:
                 # #region agent log
                 logger.warning(
-                    "google_sign_in_email_role_conflict existing_role=%s requested_role=%s",
+                    "google_sign_in_email_role_conflict existing_role=%s requested_role=%s auth_provider=%s",
                     user.role,
                     role,
+                    user.auth_provider,
                 )
                 # #endregion
                 raise GoogleAccountConflictError(
-                    f"Este email ya está registrado como {user.role}; "
-                    "usa otra cuenta Google en la app conductor"
+                    f"El email ya está registrado como '{user.role}' "
+                    f"(auth={user.auth_provider or 'local'}) y pediste '{role}'. "
+                    "En la app conductor usa otra cuenta Google, o entra con usuario/contraseña "
+                    "si ese rol lo permite."
                 )
             user.google_uid = identity.uid
             user.auth_provider = provider
