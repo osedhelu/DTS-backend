@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import uuid
+import logging
 
 from django.db import transaction
 
@@ -9,6 +9,8 @@ from features.accounts.domain.exceptions import (
     GoogleAccountConflictError,
     InvalidGoogleTokenError,
 )
+
+logger = logging.getLogger(__name__)
 from features.accounts.infrastructure.firebase_token_verifier import (
     FirebaseTokenVerifier,
     VerifiedSocialIdentity,
@@ -49,6 +51,13 @@ class GoogleSignInUseCase:
         user = CustomUser.objects.filter(google_uid=identity.uid).first()
         if user is not None:
             if user.role != role:
+                # #region agent log
+                logger.warning(
+                    "google_sign_in_role_conflict google_uid existing_role=%s requested_role=%s",
+                    user.role,
+                    role,
+                )
+                # #endregion
                 raise GoogleAccountConflictError(
                     "Esta cuenta Google pertenece a otro rol; usa la app correcta"
                 )
@@ -62,8 +71,16 @@ class GoogleSignInUseCase:
                     "El email ya está vinculado a otra cuenta de Google"
                 )
             if user.role != role:
+                # #region agent log
+                logger.warning(
+                    "google_sign_in_email_role_conflict existing_role=%s requested_role=%s",
+                    user.role,
+                    role,
+                )
+                # #endregion
                 raise GoogleAccountConflictError(
-                    "Esta cuenta no corresponde al rol solicitado"
+                    f"Este email ya está registrado como {user.role}; "
+                    "usa otra cuenta Google en la app conductor"
                 )
             user.google_uid = identity.uid
             user.auth_provider = provider
