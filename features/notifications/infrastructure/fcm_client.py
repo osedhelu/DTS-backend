@@ -67,20 +67,10 @@ class FCMClient:
         if self._initialized:
             return self._app
 
-        if not self._credentials_path:
-            raise FCMNotConfiguredError(
-                "FCM_CREDENTIALS_PATH no está configurado en settings"
-            )
+        from features.accounts.infrastructure.firebase_apps import ensure_firebase_app
 
-        import firebase_admin
-        from firebase_admin import credentials
-
-        try:
-            self._app = firebase_admin.get_app(self._app_name)
-        except ValueError:
-            cred = credentials.Certificate(self._credentials_path)
-            self._app = firebase_admin.initialize_app(cred, name=self._app_name)
-
+        # Paths/JSON se resuelven en ensure_firebase_app (env Railway + path).
+        self._app = ensure_firebase_app(self._app_name)
         self._initialized = True
         return self._app
 

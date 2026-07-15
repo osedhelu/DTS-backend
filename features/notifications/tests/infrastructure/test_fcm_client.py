@@ -7,11 +7,11 @@ from features.notifications.infrastructure.fcm_client import FCMClient, PushPayl
 
 
 @patch("firebase_admin.messaging.send", return_value="projects/test/messages/abc123")
-@patch("firebase_admin.initialize_app")
-@patch("firebase_admin.credentials.Certificate")
-def test_fcm_client_send_mock(mock_certificate, mock_initialize_app, mock_send):
-    mock_certificate.return_value = MagicMock()
-
+@patch(
+    "features.accounts.infrastructure.firebase_apps.ensure_firebase_app",
+    return_value=MagicMock(name="firebase-app"),
+)
+def test_fcm_client_send_mock(mock_ensure_app, mock_send):
     client = FCMClient(credentials_path="/tmp/fake-service-account.json")
     message_id = client.send(
         token="device-token-xyz",
@@ -20,8 +20,7 @@ def test_fcm_client_send_mock(mock_certificate, mock_initialize_app, mock_send):
         data={"notification_type": "order_on_the_way", "order_id": "42"},
     )
 
-    mock_certificate.assert_called_once_with("/tmp/fake-service-account.json")
-    mock_initialize_app.assert_called_once()
+    mock_ensure_app.assert_called_once_with("customer")
     mock_send.assert_called_once()
 
     sent_message = mock_send.call_args.args[0]
@@ -36,11 +35,11 @@ def test_fcm_client_send_mock(mock_certificate, mock_initialize_app, mock_send):
 
 
 @patch("firebase_admin.messaging.send", return_value="projects/test/messages/def456")
-@patch("firebase_admin.initialize_app")
-@patch("firebase_admin.credentials.Certificate")
-def test_fcm_client_send_payload(mock_certificate, mock_initialize_app, mock_send):
-    mock_certificate.return_value = MagicMock()
-
+@patch(
+    "features.accounts.infrastructure.firebase_apps.ensure_firebase_app",
+    return_value=MagicMock(name="firebase-app"),
+)
+def test_fcm_client_send_payload(mock_ensure_app, mock_send):
     client = FCMClient(credentials_path="/tmp/fake-service-account.json")
     payload = PushPayload(
         token="another-token",
@@ -50,10 +49,15 @@ def test_fcm_client_send_payload(mock_certificate, mock_initialize_app, mock_sen
 
     assert client.send_payload(payload) == "projects/test/messages/def456"
     mock_send.assert_called_once()
+    mock_ensure_app.assert_called_once()
 
 
-def test_fcm_client_requires_credentials_path():
+@patch(
+    "features.accounts.infrastructure.firebase_apps.ensure_firebase_app",
+    side_effect=FCMNotConfiguredError("Credenciales Firebase no configuradas"),
+)
+def test_fcm_client_requires_credentials(mock_ensure_app):
     client = FCMClient(credentials_path=None)
 
-    with pytest.raises(FCMNotConfiguredError, match="FCM_CREDENTIALS_PATH"):
+    with pytest.raises(FCMNotConfiguredError, match="Credenciales Firebase"):
         client.send(token="t", title="T", body="B")

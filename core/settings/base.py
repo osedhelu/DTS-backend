@@ -151,6 +151,7 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@dts.local")
 WEB_URL = env("WEB_URL", default="http://localhost:3000")
 
 # Multi Firebase: customer (discorp) + driver (dtsdrop). FCM_CREDENTIALS_PATH = fallback/compat.
+# En Railway, preferir *_SERVICE_ACCOUNT_JSON (el startCommand suele saltarse entrypoint).
 FCM_CREDENTIALS_PATH = env("FCM_CREDENTIALS_PATH", default=None)
 FIREBASE_CUSTOMER_CREDENTIALS_PATH = env(
     "FIREBASE_CUSTOMER_CREDENTIALS_PATH",
@@ -160,6 +161,15 @@ FIREBASE_DRIVER_CREDENTIALS_PATH = env(
     "FIREBASE_DRIVER_CREDENTIALS_PATH",
     default=None,
 ) or FCM_CREDENTIALS_PATH
+FIREBASE_SERVICE_ACCOUNT_JSON = env("FIREBASE_SERVICE_ACCOUNT_JSON", default=None)
+FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON = env(
+    "FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON",
+    default=None,
+) or FIREBASE_SERVICE_ACCOUNT_JSON
+FIREBASE_DRIVER_SERVICE_ACCOUNT_JSON = env(
+    "FIREBASE_DRIVER_SERVICE_ACCOUNT_JSON",
+    default=None,
+)
 
 TEMPLATES = [
     {

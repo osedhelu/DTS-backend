@@ -14,4 +14,5 @@ watchPatterns = ["**/*.py", "pyproject.toml", "uv.lock"]
 [deploy]
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
-startCommand = "sh -c 'uv run celery -A core worker --loglevel=info --concurrency ${CELERY_CONCURRENCY:-2}'"
+# Railway reemplaza CMD y a menudo no invoca ENTRYPOINT: envolver con /entrypoint.sh
+startCommand = "/entrypoint.sh sh -c 'uv run celery -A core worker --loglevel=info --concurrency ${CELERY_CONCURRENCY:-2}'"

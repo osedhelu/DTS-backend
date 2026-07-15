@@ -13,4 +13,5 @@ healthcheckPath = "/api/v1/docs/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
-startCommand = "sh -c 'uv run gunicorn core.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-2} --timeout ${GUNICORN_TIMEOUT:-120} --access-logfile - --error-logfile -'"
+# Railway reemplaza CMD y a menudo no invoca ENTRYPOINT: envolver con /entrypoint.sh
+startCommand = "/entrypoint.sh sh -c 'uv run gunicorn core.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-2} --timeout ${GUNICORN_TIMEOUT:-120} --access-logfile - --error-logfile -'"
