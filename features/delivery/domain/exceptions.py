@@ -31,3 +31,15 @@ class NoDriverAvailableError(DomainValidationError):
 
 class InvalidOrderForDriverAssignmentError(DomainValidationError):
     pass
+
+
+class OfferAlreadyTakenError(DomainValidationError):
+    pass
+
+
+class OfferNotAcceptableError(DomainValidationError):
+    pass
+
+
+class DriverProfileNotFoundForOffersError(DomainValidationError):
+    pass

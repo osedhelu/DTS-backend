@@ -29,12 +29,15 @@ class SendPushUseCase:
             "order_status": dto.order_status.value,
         }
 
+        title = dto.title_override or template.title
+        body = dto.body_override or template.body
+
         message_ids: list[str] = []
         for token in tokens:
             message_id = self._fcm_client.send(
                 token=token,
-                title=template.title,
-                body=template.body,
+                title=title,
+                body=body,
                 data=data,
             )
             message_ids.append(message_id)

@@ -45,6 +45,8 @@ from features.accounts.infrastructure.serializers import (
     DeviceTokenSerializer,
     DriverAvailabilityResponseSerializer,
     DriverAvailabilitySerializer,
+    DriverProfileResponseSerializer,
+    DriverProfileSerializer,
     GoogleAuthSerializer,
     MerchantRegisterResponseSerializer,
     MerchantRegisterSerializer,
@@ -441,6 +443,89 @@ class DriverAvailabilityView(APIView):
                     "longitude": result.longitude,
                 }
             ).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+def _driver_profile_response(result) -> dict:
+    return {
+        "full_name": result.full_name,
+        "phone": result.phone,
+        "license_number": result.license_number,
+        "vehicle_type": result.vehicle_type,
+        "vehicle_plate": result.vehicle_plate,
+        "photo_url": result.photo_url,
+        "onboarding_completed": result.onboarding_completed,
+        "is_online": result.is_online,
+    }
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: DriverProfileResponseSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+    patch=extend_schema(
+        request=DriverProfileSerializer,
+        responses={
+            200: DriverProfileResponseSerializer,
+            400: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
+class DriverProfileView(APIView):
+    permission_classes = [IsAuthenticated, IsDriver]
+
+    def get(self, request):
+        from features.accounts.application.use_cases.get_driver_profile import (
+            GetDriverProfileUseCase,
+        )
+        from features.accounts.domain.exceptions import DriverProfileNotFoundError
+
+        try:
+            result = GetDriverProfileUseCase().execute(request.user.id)
+        except DriverProfileNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(
+            DriverProfileResponseSerializer(_driver_profile_response(result)).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def patch(self, request):
+        from features.accounts.application.dto import UpdateDriverProfileDTO
+        from features.accounts.application.use_cases.update_driver_profile import (
+            UpdateDriverProfileUseCase,
+        )
+        from features.accounts.domain.exceptions import DriverProfileNotFoundError
+
+        serializer = DriverProfileSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            result = UpdateDriverProfileUseCase().execute(
+                UpdateDriverProfileDTO(
+                    driver_id=request.user.id,
+                    full_name=data.get("full_name"),
+                    phone=data.get("phone"),
+                    license_number=data.get("license_number"),
+                    vehicle_type=data.get("vehicle_type"),
+                    vehicle_plate=data.get("vehicle_plate"),
+                    photo_url=data.get("photo_url"),
+                    complete_onboarding=bool(data.get("complete_onboarding", False)),
+                )
+            )
+        except DriverProfileNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except DomainValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            DriverProfileResponseSerializer(_driver_profile_response(result)).data,
             status=status.HTTP_200_OK,
         )
 

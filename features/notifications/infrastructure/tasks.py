@@ -54,12 +54,23 @@ def execute_order_push(order_id: int, order_status: str) -> str:
     for user_id in user_ids:
         role = _role_for_user(user_id)
         use_case = _build_send_push_use_case(get_fcm_client(role=role))
+        title_override = None
+        body_override = None
+        if (
+            status == OrderStatus.DRIVER_ASSIGNED
+            and order.driver_id is not None
+            and user_id == order.driver_id
+        ):
+            title_override = "Pedido asignado"
+            body_override = "Aceptaste un pedido. Dirígete al comercio."
         message_ids.extend(
             use_case.execute(
                 SendPushDTO(
                     user_id=user_id,
                     order_id=order_id,
                     order_status=status,
+                    title_override=title_override,
+                    body_override=body_override,
                 )
             )
         )

@@ -23,4 +23,14 @@ def resolve_recipient_user_ids(
         online_drivers = driver_availability_repository.list_online_drivers()
         user_ids.extend(driver.driver_id for driver in online_drivers)
 
-    return user_ids
+    if NotificationRecipient.ASSIGNED_DRIVER in recipients and order.driver_id is not None:
+        user_ids.append(order.driver_id)
+
+    # Deduplicar conservando orden
+    seen: set[int] = set()
+    unique: list[int] = []
+    for uid in user_ids:
+        if uid not in seen:
+            seen.add(uid)
+            unique.append(uid)
+    return unique

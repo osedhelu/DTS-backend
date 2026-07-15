@@ -59,3 +59,33 @@ class TrackingPoint(models.Model):
     @property
     def longitude(self) -> float:
         return self.location.x
+
+
+class DriverOfferRejection(models.Model):
+    """Rechazo de oferta: no re-ofrecer el mismo pedido al mismo conductor."""
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="offer_rejections",
+    )
+    driver = models.ForeignKey(
+        "accounts.CustomUser",
+        on_delete=models.CASCADE,
+        related_name="offer_rejections",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "delivery_driverofferrejection"
+        verbose_name = "rechazo de oferta"
+        verbose_name_plural = "rechazos de oferta"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["order", "driver"],
+                name="uniq_delivery_offer_rejection_order_driver",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Reject order={self.order_id} driver={self.driver_id}"

@@ -27,6 +27,10 @@ class DeliveryTracking:
     order_id: int
     points: list[TrackingPoint] = field(default_factory=list)
     id: int | None = None
+    order_status: str | None = None
+    destination_latitude: float | None = None
+    destination_longitude: float | None = None
+    is_live: bool = False
 
     def add_point(
         self,

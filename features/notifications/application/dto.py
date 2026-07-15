@@ -8,3 +8,5 @@ class SendPushDTO:
     user_id: int
     order_id: int
     order_status: OrderStatus
+    title_override: str | None = None
+    body_override: str | None = None

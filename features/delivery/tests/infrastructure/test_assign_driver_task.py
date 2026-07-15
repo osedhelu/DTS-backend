@@ -1,9 +1,7 @@
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-from celery.exceptions import Retry
 from django.test.utils import override_settings
 
 from core.settings.apps_registry import build_installed_apps
@@ -61,7 +59,7 @@ def _create_driver(username: str, email: str, location: GeoLocation) -> CustomUs
     reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
 )
 @pytest.mark.django_db
-def test_task_assigns_nearest():
+def test_task_opens_searching_without_assigning():
     with override_settings(
         DATABASES=POSTGIS_DATABASE,
         INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
@@ -99,20 +97,10 @@ def test_task_assigns_nearest():
             product_type=ProductType.PHYSICAL,
         )
 
-        far_driver = _create_driver(
-            "driver_far",
-            "driver_far@test.com",
-            GeoLocation(latitude=4.6500, longitude=-74.1000),
-        )
-        nearest_driver = _create_driver(
+        _create_driver(
             "driver_near",
             "driver_near@test.com",
             GeoLocation(latitude=4.7120, longitude=-74.0710),
-        )
-        _create_driver(
-            "driver_farther",
-            "driver_farther@test.com",
-            GeoLocation(latitude=4.8000, longitude=-74.0000),
         )
 
         order = Order.objects.create(
@@ -125,10 +113,9 @@ def test_task_assigns_nearest():
         result = assign_driver_task(order.id)
 
         order.refresh_from_db()
-        assert result == f"assigned:{order.id}:{nearest_driver.id}"
-        assert order.driver_id == nearest_driver.id
-        assert order.driver_id != far_driver.id
-        assert order.status == OrderStatus.DRIVER_ASSIGNED
+        assert result == f"searching:{order.id}"
+        assert order.driver_id is None
+        assert order.status == OrderStatus.SEARCHING_DRIVER
 
 
 @pytest.mark.skipif(
@@ -136,49 +123,45 @@ def test_task_assigns_nearest():
     reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
 )
 @pytest.mark.django_db
-def test_status_after_assignment():
+def test_accept_offer_first_wins():
     with override_settings(
         DATABASES=POSTGIS_DATABASE,
         INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
-        CELERY_TASK_ALWAYS_EAGER=True,
-        CELERY_TASK_EAGER_PROPAGATES=True,
     ):
-        from features.delivery.infrastructure.tasks import assign_driver_task
+        from features.delivery.application.use_cases.accept_offer import AcceptOfferUseCase
+        from features.delivery.domain.exceptions import OfferAlreadyTakenError
         from features.orders.infrastructure.models import Order
         from features.products.infrastructure.models import Product
         from features.stores.infrastructure.models import Store
 
         merchant = CustomUser.objects.create_user(
-            username="merchant_status_assign",
-            email="merchant_status_assign@test.com",
+            username="merchant_accept",
+            email="merchant_accept@test.com",
             password="securepass123",
             role=UserRole.MERCHANT,
         )
         customer = CustomUser.objects.create_user(
-            username="customer_status_assign",
-            email="customer_status_assign@test.com",
+            username="customer_accept",
+            email="customer_accept@test.com",
             password="securepass123",
             role=UserRole.CUSTOMER,
         )
-
-        store = Store(owner=merchant, name="Status Assign Store", status=StoreStatus.OPEN)
+        store = Store(owner=merchant, name="Accept Store", status=StoreStatus.OPEN)
         store.set_location(GeoLocation(latitude=4.7110, longitude=-74.0721))
         store.save()
-
         product = Product.objects.create(
             store=store,
-            name="Status Assign Product",
+            name="P",
             price=Decimal("10000.00"),
             stock=10,
             product_type=ProductType.PHYSICAL,
         )
-
-        driver = _create_driver(
-            "driver_status_assign",
-            "driver_status_assign@test.com",
-            GeoLocation(latitude=4.7120, longitude=-74.0710),
+        d1 = _create_driver(
+            "d1", "d1@test.com", GeoLocation(latitude=4.7120, longitude=-74.0710)
         )
-
+        d2 = _create_driver(
+            "d2", "d2@test.com", GeoLocation(latitude=4.7130, longitude=-74.0700)
+        )
         order = Order.objects.create(
             customer=customer,
             store=store,
@@ -186,66 +169,10 @@ def test_status_after_assignment():
             total=product.price,
         )
 
-        assign_driver_task(order.id)
-
+        AcceptOfferUseCase().execute(order.id, d1.id)
         order.refresh_from_db()
+        assert order.driver_id == d1.id
         assert order.status == OrderStatus.DRIVER_ASSIGNED
-        assert order.driver_id == driver.id
 
-
-@pytest.mark.skipif(
-    not _geos_available(),
-    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
-)
-@pytest.mark.django_db
-def test_task_retries():
-    with override_settings(
-        DATABASES=POSTGIS_DATABASE,
-        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
-        CELERY_TASK_ALWAYS_EAGER=True,
-        CELERY_TASK_EAGER_PROPAGATES=True,
-    ):
-        from features.delivery.infrastructure.tasks import assign_driver_task
-        from features.orders.infrastructure.models import Order
-        from features.products.infrastructure.models import Product
-        from features.stores.infrastructure.models import Store
-
-        merchant = CustomUser.objects.create_user(
-            username="merchant_retry_task",
-            email="merchant_retry_task@test.com",
-            password="securepass123",
-            role=UserRole.MERCHANT,
-        )
-        customer = CustomUser.objects.create_user(
-            username="customer_retry_task",
-            email="customer_retry_task@test.com",
-            password="securepass123",
-            role=UserRole.CUSTOMER,
-        )
-
-        store = Store(owner=merchant, name="Retry Task Store", status=StoreStatus.OPEN)
-        store.set_location(GeoLocation(latitude=4.7110, longitude=-74.0721))
-        store.save()
-
-        product = Product.objects.create(
-            store=store,
-            name="Retry Task Product",
-            price=Decimal("10000.00"),
-            stock=10,
-            product_type=ProductType.PHYSICAL,
-        )
-
-        order = Order.objects.create(
-            customer=customer,
-            store=store,
-            status=OrderStatus.READY_FOR_PICKUP,
-            total=product.price,
-        )
-
-        with patch.object(assign_driver_task, "retry", side_effect=Retry()) as mock_retry:
-            with pytest.raises(Retry):
-                assign_driver_task.run(order.id)
-
-        mock_retry.assert_called_once()
-        order.refresh_from_db()
-        assert order.driver_id is None
+        with pytest.raises(OfferAlreadyTakenError):
+            AcceptOfferUseCase().execute(order.id, d2.id)

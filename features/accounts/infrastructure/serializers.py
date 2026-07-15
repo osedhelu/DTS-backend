@@ -123,6 +123,33 @@ class DriverAvailabilityResponseSerializer(serializers.Serializer):
     longitude = serializers.FloatField(allow_null=True)
 
 
+class DriverProfileSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    license_number = serializers.CharField(
+        max_length=50, required=False, allow_blank=True
+    )
+    vehicle_type = serializers.ChoiceField(
+        choices=["moto", "carro", "bici"],
+        required=False,
+        allow_blank=True,
+    )
+    vehicle_plate = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    photo_url = serializers.URLField(required=False, allow_blank=True)
+    complete_onboarding = serializers.BooleanField(required=False, default=False)
+
+
+class DriverProfileResponseSerializer(serializers.Serializer):
+    full_name = serializers.CharField(allow_blank=True)
+    phone = serializers.CharField(allow_blank=True)
+    license_number = serializers.CharField(allow_blank=True)
+    vehicle_type = serializers.CharField(allow_blank=True)
+    vehicle_plate = serializers.CharField(allow_blank=True)
+    photo_url = serializers.CharField(allow_blank=True)
+    onboarding_completed = serializers.BooleanField()
+    is_online = serializers.BooleanField()
+
+
 class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField()
     role = serializers.ChoiceField(

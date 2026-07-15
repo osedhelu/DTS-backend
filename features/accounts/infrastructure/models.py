@@ -121,13 +121,21 @@ class DriverProfile(models.Model):
         related_name="driver_profile",
     )
     phone = models.CharField(max_length=20)
+    full_name = models.CharField(max_length=150, blank=True)
     license_number = models.CharField(max_length=50, blank=True)
     vehicle_type = models.CharField(max_length=50, blank=True)
+    vehicle_plate = models.CharField(max_length=20, blank=True)
+    photo_url = models.URLField(blank=True)
+    onboarding_completed_at = models.DateTimeField(null=True, blank=True)
     is_online = models.BooleanField(default=False)
     last_latitude = models.FloatField(null=True, blank=True)
     last_longitude = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def onboarding_completed(self) -> bool:
+        return self.onboarding_completed_at is not None
 
     class Meta:
         db_table = "accounts_driver_profile"

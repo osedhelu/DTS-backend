@@ -51,10 +51,12 @@ class OrderTrackingView(APIView):
         from features.delivery.infrastructure.repositories import DjangoDeliveryTrackingRepository
         from features.delivery.infrastructure.serializers import DeliveryTrackingSerializer
         from features.orders.infrastructure.repositories import DjangoOrderRepository
+        from features.stores.infrastructure.repositories import DjangoStoreRepository
 
         use_case = GetOrderTrackingUseCase(
             DjangoOrderRepository(),
             DjangoDeliveryTrackingRepository(),
+            DjangoStoreRepository(),
         )
 
         try:
@@ -110,3 +112,82 @@ class OrderTrackingView(APIView):
             DeliveryTrackingSerializer(tracking).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: "DriverOfferSerializer"},
+    ),
+)
+class DriverOffersListView(APIView):
+    permission_classes = [IsDriver]
+
+    def get(self, request):
+        from features.delivery.application.use_cases.list_driver_offers import (
+            ListDriverOffersUseCase,
+        )
+        from features.delivery.domain.exceptions import DriverProfileNotFoundForOffersError
+        from features.delivery.infrastructure.serializers import DriverOfferSerializer
+
+        try:
+            offers = ListDriverOffersUseCase().execute(request.user.id)
+        except DriverProfileNotFoundForOffersError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+
+        payload = [
+            {
+                "order_id": o.order_id,
+                "store_id": o.store_id,
+                "store_name": o.store_name,
+                "store_latitude": o.store_latitude,
+                "store_longitude": o.store_longitude,
+                "total": o.total,
+                "distance_km": o.distance_km,
+                "status": o.status,
+            }
+            for o in offers
+        ]
+        return Response(DriverOfferSerializer(payload, many=True).data)
+
+
+class AcceptOfferView(APIView):
+    permission_classes = [IsDriver]
+
+    def post(self, request, order_id: int):
+        from features.delivery.application.use_cases.accept_offer import AcceptOfferUseCase
+        from features.delivery.domain.exceptions import (
+            OfferAlreadyTakenError,
+            OfferNotAcceptableError,
+        )
+        from features.delivery.infrastructure.serializers import AcceptOfferResponseSerializer
+        from features.orders.domain.value_objects import OrderStatus
+
+        try:
+            driver_id = AcceptOfferUseCase().execute(order_id, request.user.id)
+        except OrderNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except OfferAlreadyTakenError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except OfferNotAcceptableError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            AcceptOfferResponseSerializer(
+                {
+                    "order_id": order_id,
+                    "driver_id": driver_id,
+                    "status": OrderStatus.DRIVER_ASSIGNED,
+                }
+            ).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class RejectOfferView(APIView):
+    permission_classes = [IsDriver]
+
+    def post(self, request, order_id: int):
+        from features.delivery.application.use_cases.reject_offer import RejectOfferUseCase
+
+        RejectOfferUseCase().execute(order_id, request.user.id)
+        return Response(status=status.HTTP_204_NO_CONTENT)

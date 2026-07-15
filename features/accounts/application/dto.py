@@ -47,3 +47,27 @@ class DriverAvailabilityResult:
     is_online: bool
     latitude: float | None
     longitude: float | None
+
+
+@dataclass(frozen=True)
+class DriverProfileResult:
+    full_name: str
+    phone: str
+    license_number: str
+    vehicle_type: str
+    vehicle_plate: str
+    photo_url: str
+    onboarding_completed: bool
+    is_online: bool
+
+
+@dataclass(frozen=True)
+class UpdateDriverProfileDTO:
+    driver_id: int
+    full_name: str | None = None
+    phone: str | None = None
+    license_number: str | None = None
+    vehicle_type: str | None = None
+    vehicle_plate: str | None = None
+    photo_url: str | None = None
+    complete_onboarding: bool = False

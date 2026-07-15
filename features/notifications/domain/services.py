@@ -22,7 +22,15 @@ class OrderStatusNotificationMapper:
         if status == OrderStatus.READY_FOR_PICKUP:
             return frozenset({NotificationRecipient.ONLINE_DRIVERS})
 
-        if status in _CUSTOMER_STATUSES:
+        if status == OrderStatus.DRIVER_ASSIGNED:
+            return frozenset(
+                {
+                    NotificationRecipient.CUSTOMER,
+                    NotificationRecipient.ASSIGNED_DRIVER,
+                }
+            )
+
+        if status in _CUSTOMER_STATUSES - {OrderStatus.DRIVER_ASSIGNED}:
             return frozenset({NotificationRecipient.CUSTOMER})
 
         return frozenset()

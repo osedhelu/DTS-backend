@@ -21,6 +21,19 @@ def test_mapper_ready_for_pickup_notifies_online_drivers():
     assert recipients == frozenset({NotificationRecipient.ONLINE_DRIVERS})
 
 
+def test_mapper_driver_assigned_notifies_customer_and_driver():
+    recipients = OrderStatusNotificationMapper.recipients_for_status(
+        OrderStatus.DRIVER_ASSIGNED
+    )
+
+    assert recipients == frozenset(
+        {
+            NotificationRecipient.CUSTOMER,
+            NotificationRecipient.ASSIGNED_DRIVER,
+        }
+    )
+
+
 @pytest.mark.parametrize(
     "status",
     [

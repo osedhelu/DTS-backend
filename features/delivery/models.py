@@ -1,3 +1,7 @@
-from features.delivery.infrastructure.models import DeliveryTracking, TrackingPoint
+from features.delivery.infrastructure.models import (
+    DeliveryTracking,
+    DriverOfferRejection,
+    TrackingPoint,
+)
 
-__all__ = ["DeliveryTracking", "TrackingPoint"]
+__all__ = ["DeliveryTracking", "TrackingPoint", "DriverOfferRejection"]
