@@ -76,7 +76,7 @@ class Migration(migrations.Migration):
                 (
                     "driver",
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
+                        on_delete=models.deletion.CASCADE,
                         related_name="payout_requests",
                         to="accounts.customuser",
                     ),
@@ -105,7 +105,7 @@ class Migration(migrations.Migration):
                 (
                     "store",
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
+                        on_delete=models.deletion.CASCADE,
                         related_name="favorited_by",
                         to="stores.store",
                     ),
@@ -113,7 +113,7 @@ class Migration(migrations.Migration):
                 (
                     "user",
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
+                        on_delete=models.deletion.CASCADE,
                         related_name="favorite_stores",
                         to="accounts.customuser",
                     ),
