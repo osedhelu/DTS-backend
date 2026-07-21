@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+import random
 from typing import Any
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
@@ -88,11 +89,21 @@ class Command(BaseCommand):
             action="store_true",
             help="Borra solo registros DEMO_E2E antes de generar.",
         )
+        parser.add_argument(
+            "--products-by-store",
+            type=str,
+            default="",
+            help="Lista separada por comas con productos por tienda en orden. Ej: 10,21,8",
+        )
 
     def handle(self, *args, **options) -> None:
         orders_per_store: int = max(0, int(options["orders_per_store"]))
         dry_run: bool = bool(options["dry_run"])
         reset_demo: bool = bool(options["reset_demo"])
+        try:
+            products_by_store: list[int] = self._parse_products_by_store(str(options["products_by_store"]))
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
 
         self.stdout.write(
             self.style.NOTICE(
@@ -115,7 +126,17 @@ class Command(BaseCommand):
 
             report: list[dict[str, Any]] = []
             for store in stores:
-                result = self._seed_store(store=store, customer=customer, driver=driver, orders_per_store=orders_per_store)
+                target_products = self._resolve_store_product_target(
+                    store_index=len(report),
+                    products_by_store=products_by_store,
+                )
+                result = self._seed_store(
+                    store=store,
+                    customer=customer,
+                    driver=driver,
+                    orders_per_store=orders_per_store,
+                    target_products=target_products,
+                )
                 report.append(result)
 
             if dry_run:
@@ -210,6 +231,7 @@ class Command(BaseCommand):
         customer: CustomUser,
         driver: CustomUser,
         orders_per_store: int,
+        target_products: int,
     ) -> dict[str, Any]:
         zone, zone_created = DeliveryZone.objects.get_or_create(
             store=store,
@@ -233,6 +255,7 @@ class Command(BaseCommand):
         physical_created = 0
         product_ids: list[int] = []
 
+        category_map: dict[str, tuple[Category, list[Category]]] = {}
         for plan in CATEGORY_PLANS:
             parent, parent_created = Category.objects.get_or_create(
                 store=store,
@@ -257,43 +280,48 @@ class Command(BaseCommand):
                 children.append(child)
                 if child_created:
                     categories_created += 1
+            category_map[plan.code] = (parent, children)
 
-            for idx in range(plan.product_count):
-                product_type = ProductType.SERVICE if idx % 4 == 0 else ProductType.PHYSICAL
-                subcategory = children[idx % len(children)]
-                dynamic_values = self._build_dynamic_values(plan.code, idx)
-                defaults = self._build_product_defaults(
-                    store=store,
-                    plan=plan,
-                    idx=idx,
-                    product_type=product_type,
-                    dynamic_values=dynamic_values,
-                )
-                product_name = f"{DEMO_PREFIX}_{plan.code}_{idx + 1:02d}_{store.id}"
+        rng = random.Random(store.id)
+        plan_sequence = [rng.choice(CATEGORY_PLANS) for _ in range(max(0, target_products))]
 
-                product, created = Product.objects.get_or_create(
-                    store=store,
-                    name=product_name,
-                    defaults=defaults | {"category": parent, "subcategory": subcategory},
-                )
+        for idx, plan in enumerate(plan_sequence):
+            parent, children = category_map[plan.code]
+            product_type = ProductType.SERVICE if idx % 4 == 0 else ProductType.PHYSICAL
+            subcategory = children[idx % len(children)]
+            dynamic_values = self._build_dynamic_values(plan.code, idx)
+            defaults = self._build_product_defaults(
+                store=store,
+                plan=plan,
+                idx=idx,
+                product_type=product_type,
+                dynamic_values=dynamic_values,
+            )
+            product_name = f"{DEMO_PREFIX}_{plan.code}_{idx + 1:02d}_{store.id}"
 
-                if not created:
-                    changed = False
-                    for field, value in (defaults | {"category": parent, "subcategory": subcategory}).items():
-                        if getattr(product, field) != value:
-                            setattr(product, field, value)
-                            changed = True
-                    if changed:
-                        product.save()
+            product, created = Product.objects.get_or_create(
+                store=store,
+                name=product_name,
+                defaults=defaults | {"category": parent, "subcategory": subcategory},
+            )
+
+            if not created:
+                changed = False
+                for field, value in (defaults | {"category": parent, "subcategory": subcategory}).items():
+                    if getattr(product, field) != value:
+                        setattr(product, field, value)
+                        changed = True
+                if changed:
+                    product.save()
+            else:
+                products_created += 1
+                if product_type == ProductType.SERVICE:
+                    services_created += 1
                 else:
-                    products_created += 1
-                    if product_type == ProductType.SERVICE:
-                        services_created += 1
-                    else:
-                        physical_created += 1
+                    physical_created += 1
 
-                product_ids.append(product.id)
-                self._ensure_product_details(product, idx)
+            product_ids.append(product.id)
+            self._ensure_product_details(product, idx)
 
         orders_created = self._create_demo_orders(
             store=store,
@@ -312,7 +340,33 @@ class Command(BaseCommand):
             "service_products_created": services_created,
             "orders_created": orders_created,
             "payment_methods_created": payment_created,
+            "target_products": target_products,
         }
+
+    def _parse_products_by_store(self, raw: str) -> list[int]:
+        cleaned = raw.strip()
+        if not cleaned:
+            return []
+        values: list[int] = []
+        for chunk in cleaned.split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            try:
+                amount = int(chunk)
+            except ValueError as exc:
+                raise ValueError(
+                    "--products-by-store debe ser una lista de enteros separada por coma, por ejemplo 10,21,8"
+                ) from exc
+            values.append(max(0, amount))
+        return values
+
+    def _resolve_store_product_target(self, *, store_index: int, products_by_store: list[int]) -> int:
+        if not products_by_store:
+            return sum(plan.product_count for plan in CATEGORY_PLANS)
+        if store_index < len(products_by_store):
+            return products_by_store[store_index]
+        return products_by_store[-1]
 
     def _build_dynamic_values(self, code: str, idx: int) -> dict[str, Any]:
         if code == "A":
@@ -486,6 +540,7 @@ class Command(BaseCommand):
         for row in report:
             self.stdout.write(
                 f"Store[{row['store_id']}] {row['store_name']} | "
+                f"target={row['target_products']} "
                 f"cats+={row['categories_created']} products+={row['products_created']} "
                 f"(physical={row['physical_products_created']} service={row['service_products_created']}) "
                 f"orders+={row['orders_created']} payments+={row['payment_methods_created']}"
