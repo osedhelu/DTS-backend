@@ -11,16 +11,26 @@ from django.utils import timezone
 
 from features.accounts.domain.entities import UserRole
 from features.accounts.infrastructure.models import CustomUser, CustomerProfile, DriverProfile
+from features.delivery.infrastructure.models import DeliveryTracking, TrackingPoint
 from features.orders.domain.value_objects import OrderStatus, OrderType
 from features.orders.infrastructure.models import Order, OrderItem
 from features.payments.domain.entities import PaymentMethodType
 from features.payments.infrastructure.models import StorePaymentMethod
 from features.products.domain.entities import ProductType
 from features.products.infrastructure.models import Category, Product, ProductIngredient, ProductVariant
+from features.stores.domain.value_objects import GeoLocation
 from features.stores.infrastructure.models import DeliveryZone, Store
 
 
 DEMO_PREFIX = "DEMO_E2E"
+
+DELIVERY_DEMO_STATUSES: list[tuple[OrderStatus, str | None]] = [
+    (OrderStatus.SEARCHING_DRIVER, None),
+    (OrderStatus.SEARCHING_DRIVER, None),
+    (OrderStatus.DRIVER_ASSIGNED, "driver"),
+    (OrderStatus.PICKED_UP, "driver"),
+    (OrderStatus.ON_THE_WAY, "driver"),
+]
 
 
 @dataclass(frozen=True)
@@ -143,7 +153,7 @@ class Command(BaseCommand):
                 transaction.set_rollback(True)
                 self.stdout.write(self.style.WARNING("Dry-run activo: rollback aplicado."))
 
-        self._print_report(report, dry_run=dry_run)
+        self._print_report(report, dry_run=dry_run, driver=driver)
 
     def _get_or_create_demo_customer(self) -> CustomUser:
         username = f"{DEMO_PREFIX.lower()}_customer"
@@ -485,8 +495,9 @@ class Command(BaseCommand):
         ).first()
 
         created = 0
+        delivery_idx = 0
         for idx in range(orders_per_store):
-            service_mode = bool(service_products) and idx % 3 == 0
+            service_mode = bool(service_products) and idx % 4 == 3
             product = service_products[idx % len(service_products)] if service_mode else physical_products[idx % len(physical_products)]
             quantity = 1 + (idx % 2)
             order_type = OrderType.SERVICE if service_mode else OrderType.DELIVERY
@@ -497,12 +508,21 @@ class Command(BaseCommand):
 
             method = sandbox_method if idx % 2 == 0 and sandbox_method else cash_method
             payment_status = "paid" if method and method.method_type == PaymentMethodType.SANDBOX.value else "cash_on_delivery"
-            status = OrderStatus.COMPLETED if service_mode else [OrderStatus.CREATED, OrderStatus.DRIVER_ASSIGNED, OrderStatus.DELIVERED][idx % 3]
+
+            if service_mode:
+                status = OrderStatus.COMPLETED
+                order_driver = None
+            else:
+                status, driver_mode = DELIVERY_DEMO_STATUSES[
+                    delivery_idx % len(DELIVERY_DEMO_STATUSES)
+                ]
+                delivery_idx += 1
+                order_driver = driver if driver_mode == "driver" else None
 
             order = Order.objects.create(
                 customer=customer,
                 store=store,
-                driver=driver if status in {OrderStatus.DRIVER_ASSIGNED, OrderStatus.DELIVERED} else None,
+                driver=order_driver,
                 status=status,
                 order_type=order_type,
                 service_address=f"Calle Demo {store.id} #{idx + 10}-00",
@@ -524,11 +544,42 @@ class Command(BaseCommand):
             )
             order.total = order.compute_total()
             order.save(update_fields=["total", "updated_at"])
+            if not service_mode:
+                self._ensure_demo_tracking(order)
             created += 1
 
         return created
 
-    def _print_report(self, report: list[dict[str, Any]], *, dry_run: bool) -> None:
+    def _ensure_demo_tracking(self, order: Order) -> None:
+        if order.status not in {
+            OrderStatus.PICKED_UP,
+            OrderStatus.ON_THE_WAY,
+        }:
+            return
+
+        tracking, _ = DeliveryTracking.objects.get_or_create(order=order)
+        if tracking.points.exists():
+            return
+
+        base_lat = float(order.service_latitude or order.store.latitude)
+        base_lng = float(order.service_longitude or order.store.longitude)
+        point = TrackingPoint(
+            tracking=tracking,
+            sequence=1,
+            recorded_at=timezone.now(),
+        )
+        point.set_location(
+            GeoLocation(latitude=base_lat + 0.002, longitude=base_lng + 0.002)
+        )
+        point.save()
+
+    def _print_report(
+        self,
+        report: list[dict[str, Any]],
+        *,
+        dry_run: bool,
+        driver: CustomUser,
+    ) -> None:
         totals = {
             "categories_created": 0,
             "products_created": 0,
@@ -554,5 +605,13 @@ class Command(BaseCommand):
                 f"[seed_demo_e2e] {mode} | stores={len(report)} "
                 f"cats+={totals['categories_created']} products+={totals['products_created']} "
                 f"orders+={totals['orders_created']} payment_methods+={totals['payment_methods_created']}"
+            )
+        )
+        self.stdout.write(
+            self.style.NOTICE(
+                "Conductor demo para app: "
+                f"usuario={driver.username} clave=demo12345 | "
+                "Ofertas: pedidos en searching_driver | "
+                "Mis pedidos: asignados a este conductor"
             )
         )
