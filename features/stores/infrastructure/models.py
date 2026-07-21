@@ -146,7 +146,7 @@ class StoreReview(models.Model):
         ordering = ["-created_at"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(rating__gte=1) & models.Q(rating__lte=5),
+                condition=models.Q(rating__gte=1) & models.Q(rating__lte=5),
                 name="store_review_rating_range",
             ),
         ]
