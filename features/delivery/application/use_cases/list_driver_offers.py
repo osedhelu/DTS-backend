@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from features.delivery.domain.constants import MAX_DRIVER_OFFER_DISTANCE_KM
 from features.delivery.domain.exceptions import DriverProfileNotFoundForOffersError
 from features.delivery.domain.services import DriverMatcher
 from features.delivery.infrastructure.models import DriverOfferRejection
@@ -25,7 +26,7 @@ class DriverOfferItem:
 class ListDriverOffersUseCase:
     """Lista pedidos SEARCHING_DRIVER cercanos, excluyendo rechazos del conductor."""
 
-    MAX_DISTANCE_KM = 25.0
+    MAX_DISTANCE_KM = MAX_DRIVER_OFFER_DISTANCE_KM
 
     def execute(self, driver_id: int) -> list[DriverOfferItem]:
         try:
@@ -67,7 +68,7 @@ class ListDriverOffersUseCase:
             store_location = GeoLocation(
                 latitude=store.latitude, longitude=store.longitude
             )
-            distance = DriverMatcher._distance_km(driver_location, store_location)
+            distance = DriverMatcher.distance_km(driver_location, store_location)
             if distance > self.MAX_DISTANCE_KM:
                 continue
             offers.append(

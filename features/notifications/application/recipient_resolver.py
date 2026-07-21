@@ -1,14 +1,20 @@
+from features.delivery.domain.constants import MAX_DRIVER_OFFER_DISTANCE_KM
 from features.delivery.domain.repositories import DriverAvailabilityRepository
+from features.delivery.domain.services import DriverMatcher
 from features.notifications.domain.services import OrderStatusNotificationMapper
 from features.notifications.domain.value_objects import NotificationRecipient
 from features.orders.domain.entities import Order
 from features.orders.domain.value_objects import OrderStatus
+from features.stores.domain.value_objects import GeoLocation
 
 
 def resolve_recipient_user_ids(
     order: Order,
     order_status: OrderStatus,
     driver_availability_repository: DriverAvailabilityRepository,
+    *,
+    pickup_location: GeoLocation | None = None,
+    max_driver_distance_km: float = MAX_DRIVER_OFFER_DISTANCE_KM,
 ) -> list[int]:
     recipients = OrderStatusNotificationMapper.recipients_for_status(order_status)
     if not recipients:
@@ -21,6 +27,16 @@ def resolve_recipient_user_ids(
 
     if NotificationRecipient.ONLINE_DRIVERS in recipients:
         online_drivers = driver_availability_repository.list_online_drivers()
+        if pickup_location is None:
+            # Sin ubicación de tienda no se notifica a conductores (evita spam global).
+            online_drivers = []
+        else:
+            online_drivers = [
+                driver
+                for driver in online_drivers
+                if DriverMatcher.distance_km(pickup_location, driver.location)
+                <= max_driver_distance_km
+            ]
         user_ids.extend(driver.driver_id for driver in online_drivers)
 
     if NotificationRecipient.ASSIGNED_DRIVER in recipients and order.driver_id is not None:

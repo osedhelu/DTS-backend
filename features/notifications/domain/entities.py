@@ -17,6 +17,7 @@ class NotificationType(StrEnum):
     ORDER_ON_THE_WAY = "order_on_the_way"
     ORDER_DELIVERED = "order_delivered"
     ORDER_CANCELLED = "order_cancelled"
+    CHAT_MESSAGE = "chat_message"
 
 
 @dataclass(frozen=True, slots=True)

@@ -24,14 +24,14 @@ class DriverMatcher:
 
         return min(
             online_drivers,
-            key=lambda driver: DriverMatcher._distance_km(
+            key=lambda driver: DriverMatcher.distance_km(
                 pickup_location,
                 driver.location,
             ),
         )
 
     @staticmethod
-    def _distance_km(origin: GeoLocation, destination: GeoLocation) -> float:
+    def distance_km(origin: GeoLocation, destination: GeoLocation) -> float:
         lat1, lon1 = radians(origin.latitude), radians(origin.longitude)
         lat2, lon2 = radians(destination.latitude), radians(destination.longitude)
         delta_lat = lat2 - lat1
@@ -42,3 +42,6 @@ class DriverMatcher:
             + cos(lat1) * cos(lat2) * sin(delta_lon / 2) ** 2
         )
         return 2 * EARTH_RADIUS_KM * asin(sqrt(a))
+
+    # Compat: callers antiguos
+    _distance_km = distance_km

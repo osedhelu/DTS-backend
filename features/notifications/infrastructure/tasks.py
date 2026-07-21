@@ -34,6 +34,17 @@ def notify_customer_task(self, order_id: int) -> str:
     return execute_order_push(order_id, OrderStatus.ON_THE_WAY)
 
 
+def _pickup_location_for_order(store_id: int):
+    from features.stores.domain.value_objects import GeoLocation
+    from features.stores.infrastructure.models import Store
+
+    try:
+        store = Store.objects.only("location").get(pk=store_id)
+    except Store.DoesNotExist:
+        return None
+    return GeoLocation(latitude=store.latitude, longitude=store.longitude)
+
+
 def execute_order_push(order_id: int, order_status: str) -> str:
     order_repository = DjangoOrderRepository()
     order = order_repository.get_by_id(order_id)
@@ -48,6 +59,7 @@ def execute_order_push(order_id: int, order_status: str) -> str:
         order,
         status,
         DjangoDriverAvailabilityRepository(),
+        pickup_location=_pickup_location_for_order(order.store_id),
     )
 
     message_ids: list[str] = []
@@ -116,6 +128,37 @@ def dispatch_order_push_task(self, order_id: int, order_status: str) -> str:
 def notify_drivers_new_order_task(self, order_id: int) -> str:
     """Push FCM a conductores online (proyecto dtsdrop) cuando el pedido está listo."""
     return execute_order_push(order_id, OrderStatus.READY_FOR_PICKUP)
+
+
+def execute_chat_push(order_id: int, recipient_user_id: int, preview: str, sender_role: str = "") -> str:
+    from features.notifications.application.dto import SendChatPushDTO
+
+    role = _role_for_user(recipient_user_id)
+    use_case = _build_send_push_use_case(get_fcm_client(role=role))
+    message_ids = use_case.execute_chat(
+        SendChatPushDTO(
+            user_id=recipient_user_id,
+            order_id=order_id,
+            preview=preview,
+            sender_role=sender_role,
+        )
+    )
+    return f"chat_sent:{order_id}:{recipient_user_id}:{len(message_ids)}"
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    name="features.notifications.infrastructure.tasks.notify_chat_message_task",
+)
+def notify_chat_message_task(
+    self,
+    order_id: int,
+    recipient_user_id: int,
+    preview: str,
+    sender_role: str = "",
+) -> str:
+    return execute_chat_push(order_id, recipient_user_id, preview, sender_role)
 
 
 def _build_send_order_email_use_case() -> SendOrderEmailUseCase:
