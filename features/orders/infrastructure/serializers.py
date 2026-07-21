@@ -198,5 +198,76 @@ def build_customer_order_detail_enrichment(order_model) -> dict:
     }
 
 
+def build_merchant_order_enrichment(order_model) -> dict:
+    """Datos legibles de cliente/conductor/dirección para el portal comercio."""
+    store = order_model.store
+    customer = order_model.customer
+
+    customer_name = None
+    customer_phone = None
+    customer_profile = getattr(customer, "customer_profile", None)
+    if customer_profile is not None:
+        customer_name = customer_profile.display_full_name() or None
+        customer_phone = customer_profile.phone or None
+    if not customer_name:
+        customer_name = (customer.get_full_name() or "").strip() or customer.username
+
+    driver_name = None
+    driver_phone = None
+    if order_model.driver_id and order_model.driver is not None:
+        driver_profile = getattr(order_model.driver, "driver_profile", None)
+        if driver_profile is not None:
+            driver_name = (
+                (driver_profile.full_name or "").strip() or order_model.driver.username
+            )
+            driver_phone = driver_profile.phone or None
+        else:
+            driver_name = order_model.driver.username
+
+    service_address = (order_model.service_address or "").strip()
+    delivery_address = service_address or (store.address if store is not None else "") or ""
+    delivery_latitude = order_model.service_latitude
+    delivery_longitude = order_model.service_longitude
+    if (delivery_latitude is None or delivery_longitude is None) and store is not None:
+        delivery_latitude = store.latitude
+        delivery_longitude = store.longitude
+
+    notes = (order_model.customer_notes or "").strip() or None
+
+    return {
+        "customer_name": customer_name,
+        "customer_phone": customer_phone,
+        "driver_name": driver_name,
+        "driver_phone": driver_phone,
+        "delivery_address": delivery_address or None,
+        "delivery_latitude": delivery_latitude,
+        "delivery_longitude": delivery_longitude,
+        "customer_notes": notes,
+        "service_address": delivery_address or None,
+        "service_latitude": delivery_latitude,
+        "service_longitude": delivery_longitude,
+        "created_at": (
+            order_model.created_at.isoformat() if order_model.created_at else None
+        ),
+    }
+
+
+class MerchantOrderSerializer(OrderSerializer):
+    customer_name = serializers.CharField(read_only=True, allow_null=True)
+    customer_phone = serializers.CharField(read_only=True, allow_null=True)
+    driver_name = serializers.CharField(read_only=True, allow_null=True)
+    driver_phone = serializers.CharField(read_only=True, allow_null=True)
+    delivery_address = serializers.CharField(read_only=True, allow_null=True)
+    delivery_latitude = serializers.FloatField(read_only=True, allow_null=True)
+    delivery_longitude = serializers.FloatField(read_only=True, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True, allow_null=True)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        enrichment = self.context.get("enrichment", {})
+        data.update(enrichment)
+        return data
+
+
 class TransitionOrderSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=[status.value for status in OrderStatus])

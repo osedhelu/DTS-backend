@@ -10,7 +10,16 @@ from core.settings.apps_registry import build_installed_apps
 
 # Apps que requieren GDAL/PostGIS — se excluyen del suite local sin GDAL
 GIS_DEPENDENT_MODULES = frozenset(
-    {"stores", "products", "orders", "delivery", "analytics", "marketing"}
+    {
+        "stores",
+        "products",
+        "orders",
+        "delivery",
+        "analytics",
+        "marketing",
+        "chat",
+        "payments",
+    }
 )
 
 

@@ -23,10 +23,12 @@ from features.orders.infrastructure.serializers import (
     CreateServiceOrderSerializer,
     CustomerOrderDetailSerializer,
     DriverOrderDetailSerializer,
+    MerchantOrderSerializer,
     OrderSerializer,
     TransitionOrderSerializer,
     build_customer_order_detail_enrichment,
     build_driver_order_detail_enrichment,
+    build_merchant_order_enrichment,
 )
 
 
@@ -44,16 +46,41 @@ class OrderListCreateView(APIView):
         return [IsAuthenticated()]
 
     def get(self, request):
-        from features.orders.infrastructure.repositories import DjangoOrderRepository
-        from features.orders.infrastructure.serializers import OrderSerializer
+        from features.orders.infrastructure.repositories import (
+            DjangoOrderRepository,
+            _order_to_entity,
+        )
+        from features.orders.infrastructure.serializers import (
+            MerchantOrderSerializer,
+            OrderSerializer,
+        )
 
         status_filter = request.query_params.get("status")
         parsed_status = OrderStatus(status_filter) if status_filter else None
-
+        role = UserRole(request.user.role)
         repository = DjangoOrderRepository()
+
+        if role == UserRole.MERCHANT:
+            order_models = repository.list_models_for_user(
+                request.user.id,
+                role,
+                status=parsed_status,
+            )
+            return paginate_list(
+                request,
+                order_models,
+                lambda page: [
+                    MerchantOrderSerializer(
+                        _order_to_entity(model),
+                        context={"enrichment": build_merchant_order_enrichment(model)},
+                    ).data
+                    for model in page
+                ],
+            )
+
         orders = repository.list_for_user(
             request.user.id,
-            UserRole(request.user.role),
+            role,
             status=parsed_status,
         )
         return paginate_list(
@@ -236,6 +263,12 @@ class OrderDetailView(APIView):
             enrichment = build_customer_order_detail_enrichment(order_model)
             return Response(
                 CustomerOrderDetailSerializer(order, context={"enrichment": enrichment}).data
+            )
+
+        if role == UserRole.MERCHANT:
+            enrichment = build_merchant_order_enrichment(order_model)
+            return Response(
+                MerchantOrderSerializer(order, context={"enrichment": enrichment}).data
             )
 
         enrichment = build_driver_order_detail_enrichment(order_model)

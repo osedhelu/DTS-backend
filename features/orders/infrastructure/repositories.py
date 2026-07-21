@@ -111,7 +111,27 @@ class DjangoOrderRepository:
         role: UserRole,
         status: OrderStatus | None = None,
     ) -> list[Order]:
-        queryset = OrderModel.objects.prefetch_related("items").order_by("-created_at")
+        return [
+            _order_to_entity(model)
+            for model in self.list_models_for_user(user_id, role, status=status)
+        ]
+
+    def list_models_for_user(
+        self,
+        user_id: int,
+        role: UserRole,
+        status: OrderStatus | None = None,
+    ) -> list[OrderModel]:
+        queryset = (
+            OrderModel.objects.select_related(
+                "store",
+                "customer__customer_profile",
+                "driver__driver_profile",
+                "payment_method",
+            )
+            .prefetch_related("items")
+            .order_by("-created_at")
+        )
 
         if role == UserRole.CUSTOMER:
             queryset = queryset.filter(customer_id=user_id)
@@ -125,4 +145,4 @@ class DjangoOrderRepository:
         if status is not None:
             queryset = queryset.filter(status=status.value)
 
-        return [_order_to_entity(model) for model in queryset]
+        return list(queryset)
