@@ -92,6 +92,10 @@ def test_order_api_flow(api_client):
             {
                 "store_id": store.id,
                 "items": [{"product_id": product.id, "quantity": 2}],
+                "delivery_address": "Calle 50 # 10-20",
+                "customer_notes": "Sin cebolla",
+                "latitude": 4.65,
+                "longitude": -74.08,
             },
             format="json",
         )
@@ -100,6 +104,14 @@ def test_order_api_flow(api_client):
         assert create_response.data["status"] == OrderStatus.CREATED
         assert create_response.data["total"] == "31980.00"
         order_id = create_response.data["id"]
+
+        from features.orders.infrastructure.models import Order as OrderModel
+
+        order_model = OrderModel.objects.get(pk=order_id)
+        assert order_model.service_address == "Calle 50 # 10-20"
+        assert order_model.customer_notes == "Sin cebolla"
+        assert order_model.service_latitude == pytest.approx(4.65)
+        assert order_model.service_longitude == pytest.approx(-74.08)
 
         customer_list = api_client.get("/api/v1/orders/")
         assert customer_list.status_code == status.HTTP_200_OK

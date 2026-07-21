@@ -43,6 +43,27 @@ class Order(models.Model):
     service_longitude = models.FloatField(null=True, blank=True)
     duration_minutes = models.PositiveIntegerField(null=True, blank=True)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payment_method = models.ForeignKey(
+        "payments.StorePaymentMethod",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="orders",
+    )
+    payment_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pending", "pending"),
+            ("paid", "paid"),
+            ("failed", "failed"),
+            ("cash_on_delivery", "cash_on_delivery"),
+        ],
+        default="pending",
+    )
+    payment_reference = models.CharField(max_length=100, blank=True, default="")
+    coupon_code = models.CharField(max_length=50, blank=True, default="")
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    paid_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

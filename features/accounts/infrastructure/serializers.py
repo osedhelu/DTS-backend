@@ -136,6 +136,13 @@ class DriverProfileSerializer(serializers.Serializer):
     )
     vehicle_plate = serializers.CharField(max_length=20, required=False, allow_blank=True)
     photo_url = serializers.URLField(required=False, allow_blank=True)
+    bank_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    bank_account_number = serializers.CharField(
+        max_length=50, required=False, allow_blank=True
+    )
+    bank_account_type = serializers.CharField(
+        max_length=30, required=False, allow_blank=True
+    )
     complete_onboarding = serializers.BooleanField(required=False, default=False)
 
 
@@ -148,6 +155,25 @@ class DriverProfileResponseSerializer(serializers.Serializer):
     photo_url = serializers.CharField(allow_blank=True)
     onboarding_completed = serializers.BooleanField()
     is_online = serializers.BooleanField()
+    verification_status = serializers.CharField()
+    bank_name = serializers.CharField(allow_blank=True)
+    bank_account_number = serializers.CharField(allow_blank=True)
+    bank_account_type = serializers.CharField(allow_blank=True)
+
+
+class DriverEarningBreakdownSerializer(serializers.Serializer):
+    order_id = serializers.IntegerField()
+    completed_at = serializers.DateTimeField()
+    order_total = serializers.CharField()
+    earning = serializers.CharField()
+
+
+class DriverEarningsResponseSerializer(serializers.Serializer):
+    period = serializers.CharField()
+    delivery_count = serializers.IntegerField()
+    total_earnings = serializers.CharField()
+    currency = serializers.CharField()
+    breakdown = DriverEarningBreakdownSerializer(many=True)
 
 
 class GoogleAuthSerializer(serializers.Serializer):
@@ -169,3 +195,60 @@ class AppleAuthSerializer(serializers.Serializer):
     # Solo disponibles en el primer Sign in with Apple (Apple no los reenvía).
     email = serializers.EmailField(required=False, allow_blank=True)
     full_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+
+
+class CustomerProfileSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    photo_url = serializers.URLField(required=False, allow_blank=True)
+    default_address = serializers.CharField(required=False, allow_blank=True)
+
+
+class CustomerProfileResponseSerializer(serializers.Serializer):
+    full_name = serializers.CharField(allow_blank=True)
+    phone = serializers.CharField(allow_blank=True)
+    photo_url = serializers.CharField(allow_blank=True)
+    default_address = serializers.CharField(allow_blank=True)
+
+
+class CustomerAddressSerializer(serializers.Serializer):
+    label = serializers.CharField(max_length=100)
+    address = serializers.CharField(trim_whitespace=False)
+    latitude = serializers.FloatField(min_value=-90, max_value=90)
+    longitude = serializers.FloatField(min_value=-180, max_value=180)
+    is_default = serializers.BooleanField(required=False, default=False)
+
+    def validate_address(self, value: str) -> str:
+        if not value.strip():
+            raise serializers.ValidationError("La dirección es obligatoria")
+        return value.strip()
+
+
+class CustomerAddressUpdateSerializer(serializers.Serializer):
+    label = serializers.CharField(max_length=100, required=False)
+    address = serializers.CharField(required=False, trim_whitespace=False)
+    latitude = serializers.FloatField(
+        required=False,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = serializers.FloatField(
+        required=False,
+        min_value=-180,
+        max_value=180,
+    )
+    is_default = serializers.BooleanField(required=False)
+
+    def validate_address(self, value: str) -> str:
+        if value is not None and not value.strip():
+            raise serializers.ValidationError("La dirección es obligatoria")
+        return value.strip() if value is not None else value
+
+
+class CustomerAddressResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    label = serializers.CharField()
+    address = serializers.CharField()
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+    is_default = serializers.BooleanField()

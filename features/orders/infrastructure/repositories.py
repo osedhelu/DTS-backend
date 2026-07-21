@@ -39,6 +39,10 @@ def _order_to_entity(model: OrderModel) -> Order:
             )
             for item in model.items.all()
         ],
+        payment_status=model.payment_status,
+        payment_method_id=model.payment_method_id,
+        coupon_code=model.coupon_code,
+        discount_amount=model.discount_amount,
     )
 
 
@@ -55,6 +59,11 @@ class DjangoOrderRepository:
             service_latitude=data.get("service_latitude"),
             service_longitude=data.get("service_longitude"),
             duration_minutes=data.get("duration_minutes"),
+            payment_method_id=data.get("payment_method_id"),
+            payment_status=data.get("payment_status", "pending"),
+            coupon_code=data.get("coupon_code", ""),
+            discount_amount=data.get("discount_amount", 0),
+            payment_reference=data.get("payment_reference", ""),
         )
         for item in data["items"]:
             OrderItemModel.objects.create(
@@ -65,7 +74,9 @@ class DjangoOrderRepository:
                 quantity=item["quantity"],
             )
 
-        order.total = order.compute_total()
+        order.total = order.compute_total() - order.discount_amount
+        if order.total < 0:
+            order.total = 0
         order.save(update_fields=["total", "updated_at"])
 
         order = OrderModel.objects.prefetch_related("items").get(pk=order.pk)

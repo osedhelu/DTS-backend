@@ -11,4 +11,8 @@ BEAT_SCHEDULE = {
         "task": "features.delivery.infrastructure.tasks.auto_assign_stale_orders_task",
         "schedule": 60.0,  # cada 60s
     },
+    "sync-store-hours": {
+        "task": "features.stores.infrastructure.tasks.sync_store_hours_task",
+        "schedule": 900.0,  # cada 15 min
+    },
 }

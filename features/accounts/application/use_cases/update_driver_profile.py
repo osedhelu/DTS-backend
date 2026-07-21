@@ -44,6 +44,15 @@ class UpdateDriverProfileUseCase:
         if dto.photo_url is not None:
             profile.photo_url = dto.photo_url.strip()
             update_fields.append("photo_url")
+        if dto.bank_name is not None:
+            profile.bank_name = dto.bank_name.strip()
+            update_fields.append("bank_name")
+        if dto.bank_account_number is not None:
+            profile.bank_account_number = dto.bank_account_number.strip()
+            update_fields.append("bank_account_number")
+        if dto.bank_account_type is not None:
+            profile.bank_account_type = dto.bank_account_type.strip()
+            update_fields.append("bank_account_type")
 
         if dto.complete_onboarding:
             missing = []
@@ -75,4 +84,8 @@ class UpdateDriverProfileUseCase:
             photo_url=profile.photo_url,
             onboarding_completed=profile.onboarding_completed,
             is_online=profile.is_online,
+            verification_status=profile.verification_status,
+            bank_name=profile.bank_name,
+            bank_account_number=profile.bank_account_number,
+            bank_account_type=profile.bank_account_type,
         )

@@ -30,6 +30,7 @@ from features.accounts.domain.exceptions import (
     EmailAlreadyVerifiedError,
     GoogleAccountConflictError,
     InvalidGoogleTokenError,
+    InvalidEarningsPeriodError,
     PasswordResetTokenAlreadyUsedError,
     PasswordResetTokenExpiredError,
     PasswordResetTokenNotFoundError,
@@ -37,14 +38,20 @@ from features.accounts.domain.exceptions import (
     VerificationTokenExpiredError,
     VerificationTokenNotFoundError,
 )
-from features.accounts.infrastructure.permissions import IsDriver, IsSuperAdmin
+from features.accounts.infrastructure.permissions import IsCustomer, IsDriver, IsSuperAdmin
 from features.accounts.infrastructure.repositories import DjangoUserRepository
 from features.accounts.infrastructure.serializers import (
     AppleAuthSerializer,
+    CustomerAddressResponseSerializer,
+    CustomerAddressSerializer,
+    CustomerAddressUpdateSerializer,
+    CustomerProfileResponseSerializer,
+    CustomerProfileSerializer,
     DeviceTokenResponseSerializer,
     DeviceTokenSerializer,
     DriverAvailabilityResponseSerializer,
     DriverAvailabilitySerializer,
+    DriverEarningsResponseSerializer,
     DriverProfileResponseSerializer,
     DriverProfileSerializer,
     GoogleAuthSerializer,
@@ -457,6 +464,10 @@ def _driver_profile_response(result) -> dict:
         "photo_url": result.photo_url,
         "onboarding_completed": result.onboarding_completed,
         "is_online": result.is_online,
+        "verification_status": result.verification_status,
+        "bank_name": result.bank_name,
+        "bank_account_number": result.bank_account_number,
+        "bank_account_type": result.bank_account_type,
     }
 
 
@@ -516,6 +527,9 @@ class DriverProfileView(APIView):
                     vehicle_type=data.get("vehicle_type"),
                     vehicle_plate=data.get("vehicle_plate"),
                     photo_url=data.get("photo_url"),
+                    bank_name=data.get("bank_name"),
+                    bank_account_number=data.get("bank_account_number"),
+                    bank_account_type=data.get("bank_account_type"),
                     complete_onboarding=bool(data.get("complete_onboarding", False)),
                 )
             )
@@ -528,6 +542,260 @@ class DriverProfileView(APIView):
             DriverProfileResponseSerializer(_driver_profile_response(result)).data,
             status=status.HTTP_200_OK,
         )
+
+
+def _driver_earnings_response(result) -> dict:
+    return {
+        "period": result.period,
+        "delivery_count": result.delivery_count,
+        "total_earnings": str(result.total_earnings),
+        "currency": result.currency,
+        "breakdown": [
+            {
+                "order_id": item.order_id,
+                "completed_at": item.completed_at,
+                "order_total": str(item.order_total),
+                "earning": str(item.earning),
+            }
+            for item in result.breakdown
+        ],
+    }
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: DriverEarningsResponseSerializer,
+            400: DetailErrorSerializer,
+        },
+    ),
+)
+class DriverEarningsView(APIView):
+    permission_classes = [IsAuthenticated, IsDriver]
+
+    def get(self, request):
+        from features.accounts.application.use_cases.get_driver_earnings import (
+            GetDriverEarningsUseCase,
+        )
+
+        period = request.query_params.get("period", "today")
+        use_case = GetDriverEarningsUseCase()
+        try:
+            result = use_case.execute(driver_id=request.user.id, period=period)
+        except InvalidEarningsPeriodError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            DriverEarningsResponseSerializer(_driver_earnings_response(result)).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+def _customer_profile_response(result) -> dict:
+    return {
+        "full_name": result.full_name,
+        "phone": result.phone,
+        "photo_url": result.photo_url,
+        "default_address": result.default_address,
+    }
+
+
+def _customer_address_response(result) -> dict:
+    return {
+        "id": result.id,
+        "label": result.label,
+        "address": result.address,
+        "latitude": result.latitude,
+        "longitude": result.longitude,
+        "is_default": result.is_default,
+    }
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: CustomerProfileResponseSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+    patch=extend_schema(
+        request=CustomerProfileSerializer,
+        responses={
+            200: CustomerProfileResponseSerializer,
+            400: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
+class CustomerProfileView(APIView):
+    permission_classes = [IsAuthenticated, IsCustomer]
+
+    def get(self, request):
+        from features.accounts.application.use_cases.get_customer_profile import (
+            GetCustomerProfileUseCase,
+        )
+        from features.accounts.domain.exceptions import CustomerProfileNotFoundError
+
+        try:
+            result = GetCustomerProfileUseCase().execute(request.user.id)
+        except CustomerProfileNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(
+            CustomerProfileResponseSerializer(_customer_profile_response(result)).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def patch(self, request):
+        from features.accounts.application.dto import UpdateCustomerProfileDTO
+        from features.accounts.application.use_cases.update_customer_profile import (
+            UpdateCustomerProfileUseCase,
+        )
+        from features.accounts.domain.exceptions import CustomerProfileNotFoundError
+
+        serializer = CustomerProfileSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            result = UpdateCustomerProfileUseCase().execute(
+                UpdateCustomerProfileDTO(
+                    customer_id=request.user.id,
+                    full_name=data.get("full_name"),
+                    phone=data.get("phone"),
+                    photo_url=data.get("photo_url"),
+                    default_address=data.get("default_address"),
+                )
+            )
+        except CustomerProfileNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except DomainValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            CustomerProfileResponseSerializer(_customer_profile_response(result)).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: CustomerAddressResponseSerializer(many=True)},
+    ),
+    post=extend_schema(
+        request=CustomerAddressSerializer,
+        responses={
+            201: CustomerAddressResponseSerializer,
+            400: DetailErrorSerializer,
+        },
+    ),
+)
+class CustomerAddressListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsCustomer]
+
+    def get(self, request):
+        from features.accounts.application.use_cases.list_customer_addresses import (
+            ListCustomerAddressesUseCase,
+        )
+
+        results = ListCustomerAddressesUseCase().execute(request.user.id)
+        return Response(
+            CustomerAddressResponseSerializer(
+                [_customer_address_response(item) for item in results],
+                many=True,
+            ).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        from features.accounts.application.dto import CreateCustomerAddressDTO
+        from features.accounts.application.use_cases.create_customer_address import (
+            CreateCustomerAddressUseCase,
+        )
+
+        serializer = CustomerAddressSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        result = CreateCustomerAddressUseCase().execute(
+            CreateCustomerAddressDTO(
+                customer_id=request.user.id,
+                label=data["label"],
+                address=data["address"],
+                latitude=data["latitude"],
+                longitude=data["longitude"],
+                is_default=data.get("is_default", False),
+            )
+        )
+
+        return Response(
+            CustomerAddressResponseSerializer(_customer_address_response(result)).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@extend_schema_view(
+    patch=extend_schema(
+        request=CustomerAddressUpdateSerializer,
+        responses={
+            200: CustomerAddressResponseSerializer,
+            400: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
+    delete=extend_schema(
+        responses={
+            204: None,
+            404: DetailErrorSerializer,
+        },
+    ),
+)
+class CustomerAddressDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsCustomer]
+
+    def patch(self, request, address_id: int):
+        from features.accounts.application.dto import UpdateCustomerAddressDTO
+        from features.accounts.application.use_cases.update_customer_address import (
+            UpdateCustomerAddressUseCase,
+        )
+        from features.accounts.domain.exceptions import CustomerAddressNotFoundError
+
+        serializer = CustomerAddressUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            result = UpdateCustomerAddressUseCase().execute(
+                UpdateCustomerAddressDTO(
+                    customer_id=request.user.id,
+                    address_id=address_id,
+                    label=data.get("label"),
+                    address=data.get("address"),
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
+                    is_default=data.get("is_default"),
+                )
+            )
+        except CustomerAddressNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(
+            CustomerAddressResponseSerializer(_customer_address_response(result)).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request, address_id: int):
+        from features.accounts.application.use_cases.delete_customer_address import (
+            DeleteCustomerAddressUseCase,
+        )
+        from features.accounts.domain.exceptions import CustomerAddressNotFoundError
+
+        try:
+            DeleteCustomerAddressUseCase().execute(request.user.id, address_id)
+        except CustomerAddressNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema_view(

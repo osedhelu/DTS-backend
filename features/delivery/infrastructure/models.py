@@ -89,3 +89,33 @@ class DriverOfferRejection(models.Model):
 
     def __str__(self) -> str:
         return f"Reject order={self.order_id} driver={self.driver_id}"
+
+
+def proof_photo_upload_to(instance: "ProofOfDelivery", filename: str) -> str:
+    extension = filename.rsplit(".", 1)[-1]
+    return f"delivery/proof/order_{instance.order_id}.{extension}"
+
+
+class ProofOfDelivery(models.Model):
+    order = models.OneToOneField(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="proof_of_delivery",
+    )
+    driver = models.ForeignKey(
+        "accounts.CustomUser",
+        on_delete=models.CASCADE,
+        related_name="proofs_of_delivery",
+    )
+    photo = models.ImageField(upload_to=proof_photo_upload_to, blank=True, null=True)
+    signature_data = models.TextField(blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    delivered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "delivery_proof_of_delivery"
+        verbose_name = "prueba de entrega"
+        verbose_name_plural = "pruebas de entrega"
+
+    def __str__(self) -> str:
+        return f"Proof pedido #{self.order_id}"

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from features.accounts.infrastructure.models import (
+    CustomerAddress,
     CustomerProfile,
     CustomUser,
     DeviceToken,
@@ -39,8 +40,15 @@ class DriverProfileAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerProfile)
 class CustomerProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "phone")
+    list_display = ("user", "phone", "full_name")
     search_fields = ("user__username", "user__email")
+
+
+@admin.register(CustomerAddress)
+class CustomerAddressAdmin(admin.ModelAdmin):
+    list_display = ("user", "label", "is_default", "updated_at")
+    list_filter = ("is_default",)
+    search_fields = ("user__username", "label", "address")
 
 
 @admin.register(DeviceToken)

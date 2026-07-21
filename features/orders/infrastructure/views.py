@@ -21,8 +21,12 @@ from features.stores.domain.exceptions import NotStoreOwnerError, StoreNotFoundE
 from features.orders.infrastructure.serializers import (
     CreateOrderSerializer,
     CreateServiceOrderSerializer,
+    CustomerOrderDetailSerializer,
+    DriverOrderDetailSerializer,
     OrderSerializer,
     TransitionOrderSerializer,
+    build_customer_order_detail_enrichment,
+    build_driver_order_detail_enrichment,
 )
 
 
@@ -84,6 +88,12 @@ class OrderListCreateView(APIView):
                         OrderLineDTO(product_id=item["product_id"], quantity=item["quantity"])
                         for item in data["items"]
                     ),
+                    delivery_address=data.get("delivery_address", ""),
+                    customer_notes=data.get("customer_notes", ""),
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
+                    payment_method_id=data.get("payment_method_id"),
+                    coupon_code=data.get("coupon_code", ""),
                 )
             )
         except EmptyCartError as exc:
@@ -160,7 +170,28 @@ class ServiceOrderCreateView(APIView):
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
+def _user_can_view_order(user, order, role: UserRole) -> bool:
+    if role == UserRole.SUPER_ADMIN:
+        return True
+    if order.customer_id == user.id:
+        return True
+    if order.driver_id == user.id:
+        return True
+    if role == UserRole.MERCHANT:
+        from features.stores.infrastructure.models import Store
+
+        return Store.objects.filter(id=order.store_id, owner_id=user.id).exists()
+    return False
+
+
 @extend_schema_view(
+    get=extend_schema(
+        responses={
+            200: DriverOrderDetailSerializer,
+            403: DetailErrorSerializer,
+            404: DetailErrorSerializer,
+        },
+    ),
     patch=extend_schema(
         request=TransitionOrderSerializer,
         responses={
@@ -173,6 +204,42 @@ class ServiceOrderCreateView(APIView):
 )
 class OrderDetailView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get(self, request, order_id: int):
+        from features.orders.infrastructure.models import Order as OrderModel
+        from features.orders.infrastructure.repositories import DjangoOrderRepository
+
+        repository = DjangoOrderRepository()
+        order = repository.get_by_id(order_id)
+        if order is None:
+            return Response(
+                {"detail": f"Pedido {order_id} no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        role = UserRole(request.user.role)
+        if not _user_can_view_order(request.user, order, role):
+            return Response(
+                {"detail": "No autorizado para ver este pedido"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        order_model = OrderModel.objects.select_related(
+            "store",
+            "customer__customer_profile",
+            "driver__driver_profile",
+        ).prefetch_related("items").get(pk=order_id)
+
+        if role == UserRole.CUSTOMER:
+            enrichment = build_customer_order_detail_enrichment(order_model)
+            return Response(
+                CustomerOrderDetailSerializer(order, context={"enrichment": enrichment}).data
+            )
+
+        enrichment = build_driver_order_detail_enrichment(order_model)
+        return Response(
+            DriverOrderDetailSerializer(order, context={"enrichment": enrichment}).data
+        )
 
     def patch(self, request, order_id: int):
         from features.orders.application.use_cases.transition_order_status import (

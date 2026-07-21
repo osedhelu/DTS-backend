@@ -53,9 +53,21 @@ class DriverProfileNotFoundError(DomainValidationError):
     pass
 
 
+class CustomerProfileNotFoundError(DomainValidationError):
+    pass
+
+
+class CustomerAddressNotFoundError(DomainValidationError):
+    pass
+
+
 class InvalidGoogleTokenError(DomainValidationError):
     pass
 
 
 class GoogleAccountConflictError(DomainValidationError):
+    pass
+
+
+class InvalidEarningsPeriodError(DomainValidationError):
     pass

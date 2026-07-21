@@ -126,6 +126,20 @@ class DriverProfile(models.Model):
     vehicle_type = models.CharField(max_length=50, blank=True)
     vehicle_plate = models.CharField(max_length=20, blank=True)
     photo_url = models.URLField(blank=True)
+    id_document_url = models.URLField(blank=True, default="")
+    verification_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pending", "pending"),
+            ("approved", "approved"),
+            ("rejected", "rejected"),
+        ],
+        default="pending",
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    bank_name = models.CharField(max_length=100, blank=True, default="")
+    bank_account_number = models.CharField(max_length=50, blank=True, default="")
+    bank_account_type = models.CharField(max_length=30, blank=True, default="")
     onboarding_completed_at = models.DateTimeField(null=True, blank=True)
     is_online = models.BooleanField(default=False)
     last_latitude = models.FloatField(null=True, blank=True)
@@ -160,7 +174,9 @@ class CustomerProfile(models.Model):
         on_delete=models.CASCADE,
         related_name="customer_profile",
     )
+    full_name = models.CharField(max_length=150, blank=True)
     phone = models.CharField(max_length=20)
+    photo_url = models.URLField(blank=True)
     default_address = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -172,6 +188,39 @@ class CustomerProfile(models.Model):
 
     def __str__(self) -> str:
         return f"Cliente {self.user.username}"
+
+    def display_full_name(self) -> str:
+        name = (self.full_name or "").strip()
+        if name:
+            return name
+        user_name = self.user.get_full_name().strip()
+        if user_name:
+            return user_name
+        return self.user.username
+
+
+class CustomerAddress(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="customer_addresses",
+    )
+    label = models.CharField(max_length=100)
+    address = models.TextField()
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "accounts_customer_address"
+        verbose_name = "dirección cliente"
+        verbose_name_plural = "direcciones cliente"
+        ordering = ["-is_default", "-updated_at"]
+
+    def __str__(self) -> str:
+        return f"{self.label} — {self.user.username}"
 
 
 class DevicePlatform(models.TextChoices):
@@ -249,3 +298,55 @@ class PasswordResetToken(models.Model):
 
     def __str__(self) -> str:
         return f"Reset {self.token} — {self.user.email}"
+
+
+class DriverPayoutRequest(models.Model):
+    driver = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="payout_requests",
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pending", "pending"),
+            ("paid", "paid"),
+            ("rejected", "rejected"),
+        ],
+        default="pending",
+    )
+    notes = models.TextField(blank=True, default="")
+    requested_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "accounts_driver_payout_request"
+        verbose_name = "solicitud de retiro"
+        verbose_name_plural = "solicitudes de retiro"
+        ordering = ["-requested_at"]
+
+
+class FavoriteStore(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="favorite_stores",
+    )
+    store = models.ForeignKey(
+        "stores.Store",
+        on_delete=models.CASCADE,
+        related_name="favorited_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "accounts_favorite_store"
+        verbose_name = "tienda favorita"
+        verbose_name_plural = "tiendas favoritas"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "store"],
+                name="unique_favorite_store_per_user",
+            ),
+        ]

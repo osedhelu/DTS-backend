@@ -1,5 +1,6 @@
 from django.urls import path
 
+from features.analytics.infrastructure.audit_views import AuditLogListView
 from features.analytics.infrastructure.views import (
     AdminCommissionsExportView,
     AdminCommissionsListView,
@@ -18,4 +19,5 @@ urlpatterns = [
         AdminCommissionsExportView.as_view(),
         name="analytics-admin-commissions-export",
     ),
+    path("audit/", AuditLogListView.as_view(), name="analytics-audit-log"),
 ]

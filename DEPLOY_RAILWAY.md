@@ -38,6 +38,7 @@ DATABASE_URL=${{postgis.DATABASE_URL}}
 REDIS_URL=${{Redis.REDIS_URL}}
 
 RUN_MIGRATIONS=true
+# Post-MVP jul 2026: stores 0005-0006, payments 0001, orders 0003, accounts 0011, delivery 0003, analytics 0002
 GUNICORN_WORKERS=2
 GUNICORN_TIMEOUT=120
 

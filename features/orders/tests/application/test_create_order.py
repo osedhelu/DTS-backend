@@ -84,6 +84,44 @@ def test_create_order_with_items():
     assert result.status == OrderStatus.CREATED
 
 
+def test_create_order_with_delivery_details():
+    order_repository = MagicMock()
+    product_repository = MagicMock()
+    store_repository = MagicMock()
+
+    store_repository.get_by_id.return_value = Store(
+        id=1, name="Restaurante", owner_id=10, status=StoreStatus.OPEN
+    )
+    product_repository.get_by_id.return_value = Product(
+        id=1,
+        name="Hamburguesa",
+        price=Decimal("15990"),
+        store_id=1,
+        stock=10,
+        product_type=ProductType.PHYSICAL,
+    )
+    order_repository.create.return_value = Order(id=100, customer_id=5, store_id=1)
+
+    use_case = CreateOrderUseCase(order_repository, product_repository, store_repository)
+    use_case.execute(
+        CreateOrderDTO(
+            customer_id=5,
+            store_id=1,
+            items=(OrderLineDTO(product_id=1, quantity=1),),
+            delivery_address="Calle 50 # 10-20",
+            customer_notes="Tocar timbre",
+            latitude=4.65,
+            longitude=-74.08,
+        )
+    )
+
+    payload = order_repository.create.call_args[0][0]
+    assert payload["service_address"] == "Calle 50 # 10-20"
+    assert payload["customer_notes"] == "Tocar timbre"
+    assert payload["service_latitude"] == 4.65
+    assert payload["service_longitude"] == -74.08
+
+
 def test_empty_cart_fails():
     order_repository = MagicMock()
     product_repository = MagicMock()

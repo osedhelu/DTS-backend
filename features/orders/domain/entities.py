@@ -37,6 +37,10 @@ class Order:
     order_type: OrderType = OrderType.DELIVERY
     driver_id: int | None = None
     service_details: ServiceOrderDetails | None = None
+    payment_status: str = "pending"
+    payment_method_id: int | None = None
+    coupon_code: str = ""
+    discount_amount: Decimal = Decimal("0")
     id: int | None = None
 
     @property
@@ -45,7 +49,8 @@ class Order:
 
     @property
     def total(self) -> Decimal:
-        return sum((item.subtotal for item in self.items), Decimal("0"))
+        gross = sum((item.subtotal for item in self.items), Decimal("0"))
+        return max(gross - self.discount_amount, Decimal("0"))
 
     @property
     def item_count(self) -> int:

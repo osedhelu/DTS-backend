@@ -34,6 +34,22 @@ class DeliveryTrackingSerializer(serializers.Serializer):
     def to_representation(self, instance):
         latest = instance.latest_point
         status = getattr(instance, "order_status", None)
+        driver_lat = latest.latitude if latest else None
+        driver_lng = latest.longitude if latest else None
+        dest_lat = getattr(instance, "destination_latitude", None)
+        dest_lng = getattr(instance, "destination_longitude", None)
+        eta_minutes = None
+        if (
+            driver_lat is not None
+            and driver_lng is not None
+            and dest_lat is not None
+            and dest_lng is not None
+        ):
+            from features.stores.domain.services import haversine_km
+
+            distance_km = haversine_km(driver_lat, driver_lng, dest_lat, dest_lng)
+            eta_minutes = max(1, int(distance_km / 0.5))
+
         return {
             "id": instance.id,
             "order_id": instance.order_id,
@@ -42,10 +58,11 @@ class DeliveryTrackingSerializer(serializers.Serializer):
             "order_status": status,
             "status": status,
             "is_live": bool(getattr(instance, "is_live", False)),
-            "destination_latitude": getattr(instance, "destination_latitude", None),
-            "destination_longitude": getattr(instance, "destination_longitude", None),
-            "driver_latitude": latest.latitude if latest else None,
-            "driver_longitude": latest.longitude if latest else None,
+            "destination_latitude": dest_lat,
+            "destination_longitude": dest_lng,
+            "driver_latitude": driver_lat,
+            "driver_longitude": driver_lng,
+            "eta_minutes": eta_minutes,
         }
 
 

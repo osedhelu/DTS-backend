@@ -1,12 +1,22 @@
 from django.urls import path
 
+from features.accounts.infrastructure.extra_views import (
+    AdminDriverVerificationView,
+    DriverPayoutListView,
+    FavoriteStoreDetailView,
+    FavoriteStoreListView,
+)
 from features.accounts.infrastructure.admin_map_views import AdminOperationsMapView
 from features.accounts.infrastructure.admin_merchant_views import AdminMerchantListView
 from features.accounts.infrastructure.views import (
     AdminDashboardView,
     AppleAuthView,
+    CustomerAddressDetailView,
+    CustomerAddressListCreateView,
+    CustomerProfileView,
     DeviceTokenView,
     DriverAvailabilityView,
+    DriverEarningsView,
     DriverProfileView,
     GoogleAuthView,
     LoginView,
@@ -53,7 +63,39 @@ urlpatterns = [
         DriverProfileView.as_view(),
         name="accounts-driver-profile",
     ),
+    path(
+        "driver/earnings/",
+        DriverEarningsView.as_view(),
+        name="accounts-driver-earnings",
+    ),
+    path(
+        "customer/profile/",
+        CustomerProfileView.as_view(),
+        name="accounts-customer-profile",
+    ),
+    path(
+        "customer/addresses/",
+        CustomerAddressListCreateView.as_view(),
+        name="accounts-customer-addresses",
+    ),
+    path(
+        "customer/addresses/<int:address_id>/",
+        CustomerAddressDetailView.as_view(),
+        name="accounts-customer-address-detail",
+    ),
     path("admin/dashboard/", AdminDashboardView.as_view(), name="accounts-admin-dashboard"),
     path("admin/merchants/", AdminMerchantListView.as_view(), name="accounts-admin-merchants"),
     path("admin/map/", AdminOperationsMapView.as_view(), name="accounts-admin-map"),
+    path("customer/favorites/", FavoriteStoreListView.as_view(), name="accounts-favorites"),
+    path(
+        "customer/favorites/<int:store_id>/",
+        FavoriteStoreDetailView.as_view(),
+        name="accounts-favorite-detail",
+    ),
+    path("driver/payouts/", DriverPayoutListView.as_view(), name="accounts-driver-payouts"),
+    path(
+        "admin/drivers/<int:driver_id>/verification/",
+        AdminDriverVerificationView.as_view(),
+        name="accounts-admin-driver-verification",
+    ),
 ]

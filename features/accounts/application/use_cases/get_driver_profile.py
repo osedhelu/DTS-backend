@@ -21,4 +21,8 @@ class GetDriverProfileUseCase:
             photo_url=profile.photo_url,
             onboarding_completed=profile.onboarding_completed,
             is_online=profile.is_online,
+            verification_status=profile.verification_status,
+            bank_name=profile.bank_name,
+            bank_account_number=profile.bank_account_number,
+            bank_account_type=profile.bank_account_type,
         )

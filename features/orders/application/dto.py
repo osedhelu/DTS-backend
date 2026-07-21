@@ -16,6 +16,12 @@ class CreateOrderDTO:
     customer_id: int
     store_id: int
     items: tuple[OrderLineDTO, ...]
+    delivery_address: str = ""
+    customer_notes: str = ""
+    latitude: float | None = None
+    longitude: float | None = None
+    payment_method_id: int | None = None
+    coupon_code: str = ""
 
 
 @dataclass(frozen=True)

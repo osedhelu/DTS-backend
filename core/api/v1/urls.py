@@ -15,4 +15,5 @@ urlpatterns = [
     path("delivery/", include("features.delivery.infrastructure.offer_urls")),
     path("analytics/", include("features.analytics.infrastructure.urls")),
     path("marketing/", include("features.marketing.infrastructure.urls")),
+    path("", include("features.payments.infrastructure.urls")),
 ]
