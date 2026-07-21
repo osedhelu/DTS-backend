@@ -6,7 +6,7 @@ Este repo (`backend/`) se despliega **solo**, sin el monorepo padre.
 
 | Servicio | Config file | Dominio público | Rol |
 |----------|-------------|-----------------|-----|
-| **DTS-backend** | `railway.toml` | ✅ Sí | API Django (Gunicorn) |
+| **DTS-backend** | `railway.toml` | ✅ Sí | API Django (Daphne/ASGI + WebSockets) |
 | **DTS-celery-worker** | `railway.worker.toml` | ❌ No | Tareas async (email, push, pedidos…) |
 | **DTS-celery-beat** | `railway.beat.toml` | ❌ No | Tareas programadas (stats 02:00) |
 

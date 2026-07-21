@@ -14,4 +14,4 @@ healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 # Railway reemplaza CMD y a menudo no invoca ENTRYPOINT: envolver con /entrypoint.sh
-startCommand = "/entrypoint.sh sh -c 'uv run gunicorn core.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-2} --timeout ${GUNICORN_TIMEOUT:-120} --access-logfile - --error-logfile -'"
+startCommand = "/entrypoint.sh sh -c 'uv run daphne -b 0.0.0.0 -p ${PORT:-8000} core.asgi:application'"

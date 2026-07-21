@@ -40,4 +40,5 @@ RUN chmod +x /entrypoint.sh
 EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["sh", "-c", "uv run gunicorn core.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-2} --timeout ${GUNICORN_TIMEOUT:-120} --access-logfile - --error-logfile -"]
+# Daphne + ASGI para HTTP y WebSockets (Channels). Gunicorn/WSGI no hace upgrade WS.
+CMD ["sh", "-c", "uv run daphne -b 0.0.0.0 -p ${PORT:-8000} core.asgi:application"]
