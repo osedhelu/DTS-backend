@@ -14,6 +14,9 @@ from features.stores.infrastructure.operation_views import (
     StoreOpeningHoursView,
     StorePublicDetailView,
 )
+from features.stores.infrastructure.merchant_operations_map_views import (
+    MerchantOperationsMapView,
+)
 from features.stores.infrastructure.views import (
     MerchantDashboardView,
     MerchantStoreListView,
@@ -24,6 +27,11 @@ from features.stores.infrastructure.views import (
 urlpatterns = [
     path("", StoreListCreateView.as_view(), name="stores-list-create"),
     path("mine/", MerchantStoreListView.as_view(), name="stores-mine"),
+    path(
+        "mine/operations-map/",
+        MerchantOperationsMapView.as_view(),
+        name="stores-mine-operations-map",
+    ),
     path("<int:store_id>/", StoreDetailView.as_view(), name="stores-detail"),
     path(
         "<int:store_id>/public/",

@@ -52,7 +52,11 @@ class AdminOperationsMapData:
 
 
 class GetAdminOperationsMapUseCase:
-    def execute(self) -> AdminOperationsMapData:
+    def execute(self, *, owner_id: int | None = None) -> AdminOperationsMapData:
+        store_qs = Store.objects.all().order_by("name")
+        if owner_id is not None:
+            store_qs = store_qs.filter(owner_id=owner_id)
+
         stores = [
             AdminMapStoreRow(
                 id=store.id,
@@ -63,15 +67,22 @@ class GetAdminOperationsMapUseCase:
                 vertical=store.vertical,
                 address=store.address or "",
             )
-            for store in Store.objects.all().order_by("name")
+            for store in store_qs
         ]
+
+        store_ids = [store.id for store in stores]
 
         orders = (
             Order.objects.filter(
                 order_type=OrderType.DELIVERY.value,
                 status__in=ACTIVE_DELIVERY_STATUSES,
+                store_id__in=store_ids,
             )
-            .select_related("store", "delivery_tracking")
+            if store_ids
+            else Order.objects.none()
+        )
+        orders = (
+            orders.select_related("store", "delivery_tracking")
             .prefetch_related("delivery_tracking__points")
             .order_by("-updated_at")
         )
