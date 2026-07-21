@@ -16,3 +16,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Railway watchPatterns: force rebuild for Daphne ASGI deploy.
