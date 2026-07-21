@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from features.accounts.application.use_cases.get_admin_operations_map import (
     AdminMapDeliveryRow,
+    AdminMapOnlineDriverRow,
     AdminMapStoreRow,
     AdminOperationsMapData,
     GetAdminOperationsMapUseCase,
@@ -37,11 +38,21 @@ class AdminMapDeliverySerializer(serializers.Serializer):
     latest_latitude = serializers.FloatField(allow_null=True)
     latest_longitude = serializers.FloatField(allow_null=True)
     latest_recorded_at = serializers.DateTimeField(allow_null=True)
+    gps_source = serializers.CharField(allow_null=True, required=False)
+
+
+class AdminMapOnlineDriverSerializer(serializers.Serializer):
+    driver_id = serializers.IntegerField()
+    full_name = serializers.CharField()
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+    updated_at = serializers.DateTimeField(allow_null=True)
 
 
 class AdminOperationsMapSerializer(serializers.Serializer):
     stores = AdminMapStoreSerializer(many=True)
     active_deliveries = AdminMapDeliverySerializer(many=True)
+    online_drivers = AdminMapOnlineDriverSerializer(many=True)
 
 
 def _serialize_store(row: AdminMapStoreRow) -> dict:
@@ -75,6 +86,19 @@ def _serialize_delivery(row: AdminMapDeliveryRow) -> dict:
             "latest_latitude": row.latest_latitude,
             "latest_longitude": row.latest_longitude,
             "latest_recorded_at": row.latest_recorded_at,
+            "gps_source": row.gps_source,
+        }
+    ).data
+
+
+def _serialize_online_driver(row: AdminMapOnlineDriverRow) -> dict:
+    return AdminMapOnlineDriverSerializer(
+        {
+            "driver_id": row.driver_id,
+            "full_name": row.full_name,
+            "latitude": row.latitude,
+            "longitude": row.longitude,
+            "updated_at": row.updated_at,
         }
     ).data
 
@@ -85,6 +109,9 @@ def _serialize_map(data: AdminOperationsMapData) -> dict:
             "stores": [_serialize_store(store) for store in data.stores],
             "active_deliveries": [
                 _serialize_delivery(delivery) for delivery in data.active_deliveries
+            ],
+            "online_drivers": [
+                _serialize_online_driver(driver) for driver in data.online_drivers
             ],
         }
     ).data

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from features.accounts.infrastructure.models import DriverProfile
 from features.orders.domain.value_objects import OrderStatus, OrderType
 from features.orders.infrastructure.models import Order
 from features.stores.infrastructure.models import Store
@@ -43,12 +44,23 @@ class AdminMapDeliveryRow:
     latest_latitude: float | None
     latest_longitude: float | None
     latest_recorded_at: datetime | None
+    gps_source: str | None = None
+
+
+@dataclass(frozen=True)
+class AdminMapOnlineDriverRow:
+    driver_id: int
+    full_name: str
+    latitude: float
+    longitude: float
+    updated_at: datetime | None
 
 
 @dataclass(frozen=True)
 class AdminOperationsMapData:
     stores: list[AdminMapStoreRow]
     active_deliveries: list[AdminMapDeliveryRow]
+    online_drivers: list[AdminMapOnlineDriverRow]
 
 
 class GetAdminOperationsMapUseCase:
@@ -87,6 +99,14 @@ class GetAdminOperationsMapUseCase:
             .order_by("-updated_at")
         )
 
+        driver_ids = [
+            order.driver_id for order in orders if order.driver_id is not None
+        ]
+        driver_profiles = {
+            profile.user_id: profile
+            for profile in DriverProfile.objects.filter(user_id__in=driver_ids)
+        }
+
         deliveries: list[AdminMapDeliveryRow] = []
         for order in orders:
             store = order.store
@@ -94,6 +114,19 @@ class GetAdminOperationsMapUseCase:
             latest_point = None
             if tracking is not None and tracking.points.exists():
                 latest_point = max(tracking.points.all(), key=lambda point: point.sequence)
+
+            latest_latitude = latest_point.latitude if latest_point else None
+            latest_longitude = latest_point.longitude if latest_point else None
+            latest_recorded_at = latest_point.recorded_at if latest_point else None
+            gps_source = "tracking" if latest_point else None
+
+            if latest_point is None and order.driver_id is not None:
+                profile = driver_profiles.get(order.driver_id)
+                if profile is not None and profile.has_last_location:
+                    latest_latitude = profile.last_latitude
+                    latest_longitude = profile.last_longitude
+                    latest_recorded_at = profile.updated_at
+                    gps_source = "profile"
 
             deliveries.append(
                 AdminMapDeliveryRow(
@@ -108,10 +141,39 @@ class GetAdminOperationsMapUseCase:
                     destination_latitude=order.service_latitude,
                     destination_longitude=order.service_longitude,
                     destination_label=order.service_address or "",
-                    latest_latitude=latest_point.latitude if latest_point else None,
-                    latest_longitude=latest_point.longitude if latest_point else None,
-                    latest_recorded_at=latest_point.recorded_at if latest_point else None,
+                    latest_latitude=latest_latitude,
+                    latest_longitude=latest_longitude,
+                    latest_recorded_at=latest_recorded_at,
+                    gps_source=gps_source,
                 )
             )
 
-        return AdminOperationsMapData(stores=stores, active_deliveries=deliveries)
+        online_qs = DriverProfile.objects.filter(
+            is_online=True,
+            last_latitude__isnull=False,
+            last_longitude__isnull=False,
+        ).select_related("user")
+
+        assigned_driver_ids = {
+            delivery.driver_id
+            for delivery in deliveries
+            if delivery.driver_id is not None
+        }
+
+        online_drivers = [
+            AdminMapOnlineDriverRow(
+                driver_id=profile.user_id,
+                full_name=profile.user.get_full_name() or profile.user.username,
+                latitude=profile.last_latitude,
+                longitude=profile.last_longitude,
+                updated_at=profile.updated_at,
+            )
+            for profile in online_qs
+            if profile.user_id not in assigned_driver_ids
+        ]
+
+        return AdminOperationsMapData(
+            stores=stores,
+            active_deliveries=deliveries,
+            online_drivers=online_drivers,
+        )
