@@ -41,6 +41,8 @@ def _order_to_entity(model: OrderModel) -> Order:
         ],
         payment_status=model.payment_status,
         payment_method_id=model.payment_method_id,
+        payment_reference=model.payment_reference,
+        paid_at=model.paid_at,
         coupon_code=model.coupon_code,
         discount_amount=model.discount_amount,
     )

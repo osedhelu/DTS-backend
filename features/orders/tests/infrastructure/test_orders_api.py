@@ -117,6 +117,8 @@ def test_order_api_flow(api_client):
         assert customer_list.status_code == status.HTTP_200_OK
         assert customer_list.data["count"] == 1
         assert customer_list.data["results"][0]["id"] == order_id
+        assert "payment_reference" in customer_list.data["results"][0]
+        assert "paid_at" in customer_list.data["results"][0]
 
         _auth(api_client, merchant)
         merchant_list = api_client.get("/api/v1/orders/")

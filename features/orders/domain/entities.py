@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 
 from features.orders.domain.exceptions import InvalidOrderItemError
@@ -39,6 +40,8 @@ class Order:
     service_details: ServiceOrderDetails | None = None
     payment_status: str = "pending"
     payment_method_id: int | None = None
+    payment_reference: str = ""
+    paid_at: datetime | None = None
     coupon_code: str = ""
     discount_amount: Decimal = Decimal("0")
     id: int | None = None
