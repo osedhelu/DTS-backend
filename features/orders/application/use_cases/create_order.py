@@ -82,6 +82,8 @@ class CreateOrderUseCase:
 
         payment_status = "pending"
         payment_method_id = dto.payment_method_id
+        if payment_method_id == 0:
+            payment_method_id = None
         if payment_method_id is not None:
             method = StorePaymentMethod.objects.filter(
                 pk=payment_method_id,

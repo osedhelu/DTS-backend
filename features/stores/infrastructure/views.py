@@ -134,6 +134,11 @@ class StoreDetailView(APIView):
                     "order_count": serializers.IntegerField(),
                     "orders_today": serializers.IntegerField(),
                     "orders_this_week": serializers.IntegerField(),
+                    "paid_today_count": serializers.IntegerField(),
+                    "paid_today_total": serializers.DecimalField(
+                        max_digits=14,
+                        decimal_places=2,
+                    ),
                     "average_ticket": serializers.DecimalField(max_digits=14, decimal_places=2),
                     "platform_commission_rate": serializers.DecimalField(
                         max_digits=5,

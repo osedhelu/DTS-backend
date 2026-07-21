@@ -59,6 +59,15 @@ class DjangoMerchantDashboardRepository:
     def count_active_products(self, store_id: int) -> int:
         return Product.objects.filter(store_id=store_id, is_active=True).count()
 
+    def get_paid_orders_today(self, store_id: int, *, on_date: date) -> tuple[int, Decimal]:
+        orders = Order.objects.filter(
+            store_id=store_id,
+            payment_status="paid",
+            paid_at__date=on_date,
+        )
+        total = sum((order.total for order in orders), Decimal("0"))
+        return orders.count(), total
+
     def get_product_sales(
         self,
         store_id: int,

@@ -8,6 +8,7 @@ class PaymentMethodType(StrEnum):
     CASH = "cash"
     TRANSFER = "transfer"
     INSTRUCTIONS = "instructions"
+    SANDBOX = "sandbox"
 
 
 class PaymentStatus(StrEnum):

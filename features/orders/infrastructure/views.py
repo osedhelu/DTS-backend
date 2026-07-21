@@ -156,6 +156,8 @@ class ServiceOrderCreateView(APIView):
                     scheduled_at=data.get("scheduled_at"),
                     latitude=data.get("latitude"),
                     longitude=data.get("longitude"),
+                    payment_method_id=data.get("payment_method_id"),
+                    coupon_code=data.get("coupon_code", ""),
                 )
             )
         except EmptyCartError as exc:

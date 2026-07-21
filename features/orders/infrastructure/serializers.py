@@ -62,6 +62,8 @@ class OrderSerializer(serializers.Serializer):
             "duration_minutes": service.duration_minutes if service else None,
             "payment_status": instance.payment_status,
             "payment_method_id": instance.payment_method_id,
+            "payment_reference": instance.payment_reference or None,
+            "paid_at": instance.paid_at,
             "coupon_code": instance.coupon_code,
             "discount_amount": str(instance.discount_amount),
         }
@@ -91,6 +93,8 @@ class CreateServiceOrderSerializer(serializers.Serializer):
     scheduled_at = serializers.DateTimeField(required=False, allow_null=True)
     latitude = serializers.FloatField(required=False, allow_null=True)
     longitude = serializers.FloatField(required=False, allow_null=True)
+    payment_method_id = serializers.IntegerField(required=False, allow_null=True)
+    coupon_code = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_service_address(self, value: str) -> str:
         if not value.strip():

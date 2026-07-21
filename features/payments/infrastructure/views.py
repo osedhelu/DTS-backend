@@ -1,5 +1,6 @@
 """API de métodos de pago por tienda."""
 
+from django.conf import settings
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
@@ -47,7 +48,21 @@ class StorePaymentMethodListView(APIView):
         methods = StorePaymentMethod.objects.filter(
             store_id=store_id, is_active=True
         ).order_by("sort_order", "name")
-        return Response([serialize_payment_method(m) for m in methods])
+        payload = [serialize_payment_method(m) for m in methods]
+        if getattr(settings, "PAYMENT_SANDBOX_ENABLED", False):
+            payload.append(
+                {
+                    "id": 0,
+                    "store_id": store_id,
+                    "method_type": "sandbox",
+                    "name": "Sandbox DTS (simulado)",
+                    "instructions": "Pago de prueba — no se cobra dinero real.",
+                    "qr_image_url": "",
+                    "is_active": True,
+                    "sort_order": 999,
+                }
+            )
+        return Response(payload)
 
     def post(self, request, store_id: int):
         serializer = CreateStorePaymentMethodSerializer(data=request.data)

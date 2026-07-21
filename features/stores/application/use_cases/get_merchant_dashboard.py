@@ -47,6 +47,10 @@ class GetMerchantDashboardUseCase:
             end_date=period_end,
         )
         active_products = self._dashboard_repository.count_active_products(store_id)
+        paid_today_count, paid_today_total = self._dashboard_repository.get_paid_orders_today(
+            store_id,
+            on_date=period_end,
+        )
         product_sales = self._dashboard_repository.get_product_sales(
             store_id,
             start_date=start_date,
@@ -71,6 +75,8 @@ class GetMerchantDashboardUseCase:
             "order_count": metrics.order_count,
             "orders_today": metrics.orders_today,
             "orders_this_week": metrics.orders_this_week,
+            "paid_today_count": paid_today_count,
+            "paid_today_total": str(paid_today_total),
             "average_ticket": str(metrics.average_ticket),
             "platform_commission_rate": str(metrics.platform_commission_rate),
             "platform_commission": str(metrics.platform_commission),

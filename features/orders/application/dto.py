@@ -34,6 +34,8 @@ class CreateServiceOrderDTO:
     scheduled_at: datetime | None = None
     latitude: float | None = None
     longitude: float | None = None
+    payment_method_id: int | None = None
+    coupon_code: str = ""
 
 
 @dataclass(frozen=True)

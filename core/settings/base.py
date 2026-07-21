@@ -13,11 +13,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env(
     DEBUG=(bool, True),
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
+    PAYMENT_SANDBOX_ENABLED=(bool, True),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY", default="dev-only-change-in-production")
 DEBUG = env.bool("DEBUG", default=True)
+PAYMENT_SANDBOX_ENABLED = env.bool("PAYMENT_SANDBOX_ENABLED", default=True)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
