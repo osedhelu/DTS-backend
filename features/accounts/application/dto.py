@@ -102,6 +102,7 @@ class DriverEarningsResult:
 @dataclass(frozen=True)
 class CustomerProfileResult:
     full_name: str
+    email: str
     phone: str
     photo_url: str
     default_address: str

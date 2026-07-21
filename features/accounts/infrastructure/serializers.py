@@ -206,6 +206,7 @@ class CustomerProfileSerializer(serializers.Serializer):
 
 class CustomerProfileResponseSerializer(serializers.Serializer):
     full_name = serializers.CharField(allow_blank=True)
+    email = serializers.EmailField(allow_blank=True)
     phone = serializers.CharField(allow_blank=True)
     photo_url = serializers.CharField(allow_blank=True)
     default_address = serializers.CharField(allow_blank=True)

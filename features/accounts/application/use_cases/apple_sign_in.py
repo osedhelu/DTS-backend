@@ -62,6 +62,7 @@ class AppleSignInUseCase:
             uid=identity.uid,
             email=resolved_email,
             display_name=display or resolved_email.split("@")[0],
+            photo_url=identity.photo_url,
             provider="apple",
         )
 
@@ -92,7 +93,7 @@ class AppleSignInUseCase:
             user.auth_provider = "apple"
             user.email_verified = True
             user.save(update_fields=["apple_uid", "auth_provider", "email_verified"])
-            self._ensure_profile(user, role)
+            self._ensure_profile(user, role, identity)
             return user
 
         username = self._build_username(identity.email)
@@ -106,15 +107,30 @@ class AppleSignInUseCase:
         )
         user.set_unusable_password()
         user.save()
-        self._ensure_profile(user, role)
+        self._ensure_profile(user, role, identity)
         return user
 
-    def _ensure_profile(self, user: CustomUser, role: str) -> None:
+    def _ensure_profile(
+        self,
+        user: CustomUser,
+        role: str,
+        identity: VerifiedSocialIdentity,
+    ) -> None:
         if role == UserRole.CUSTOMER:
-            CustomerProfile.objects.get_or_create(
+            profile, _ = CustomerProfile.objects.get_or_create(
                 user=user,
                 defaults={"phone": "", "default_address": ""},
             )
+            update_fields: list[str] = []
+            if not profile.full_name.strip() and identity.display_name.strip():
+                profile.full_name = identity.display_name.strip()
+                update_fields.append("full_name")
+            if not profile.photo_url.strip() and identity.photo_url.strip():
+                profile.photo_url = identity.photo_url.strip()
+                update_fields.append("photo_url")
+            if update_fields:
+                update_fields.append("updated_at")
+                profile.save(update_fields=update_fields)
         elif role == UserRole.DRIVER:
             DriverProfile.objects.get_or_create(
                 user=user,

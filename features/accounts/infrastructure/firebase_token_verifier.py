@@ -17,6 +17,7 @@ class VerifiedSocialIdentity:
     uid: str
     email: str | None
     display_name: str
+    photo_url: str = ""
     provider: str = "google"  # google | apple | ...
 
 
@@ -71,11 +72,13 @@ class FirebaseTokenVerifier:
         display = decoded.get("name")
         if not display:
             display = email.split("@")[0] if email else str(uid)[:32]
+        picture = str(decoded.get("picture") or "").strip()
 
         return VerifiedSocialIdentity(
             uid=str(uid),
             email=email,
             display_name=str(display),
+            photo_url=picture,
             provider=provider,
         )
 

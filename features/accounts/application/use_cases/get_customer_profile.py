@@ -14,6 +14,7 @@ class GetCustomerProfileUseCase:
 
         return CustomerProfileResult(
             full_name=profile.display_full_name(),
+            email=profile.user.email,
             phone=profile.phone,
             photo_url=profile.photo_url,
             default_address=profile.default_address,

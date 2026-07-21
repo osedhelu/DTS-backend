@@ -594,6 +594,7 @@ class DriverEarningsView(APIView):
 def _customer_profile_response(result) -> dict:
     return {
         "full_name": result.full_name,
+        "email": result.email,
         "phone": result.phone,
         "photo_url": result.photo_url,
         "default_address": result.default_address,

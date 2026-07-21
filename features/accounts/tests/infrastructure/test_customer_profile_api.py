@@ -34,6 +34,7 @@ def test_get_customer_profile(api_client):
     response = api_client.get("/api/v1/accounts/customer/profile/")
 
     assert response.status_code == status.HTTP_200_OK
+    assert response.data["email"] == "customer_profile@test.com"
     assert response.data["phone"] == "+573001112233"
     assert response.data["default_address"] == "Calle 1 # 2-3"
     assert response.data["full_name"] == "customer_profile"
@@ -57,6 +58,7 @@ def test_patch_customer_profile(api_client):
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["full_name"] == "Ana Cliente"
+    assert response.data["email"] == "customer_patch@test.com"
     assert response.data["phone"] == "+573009998877"
     assert response.data["photo_url"] == "https://cdn.example.com/photo.jpg"
     assert response.data["default_address"] == "Calle 50 # 10-20"
