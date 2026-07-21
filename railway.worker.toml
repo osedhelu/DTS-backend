@@ -9,7 +9,14 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["**/*.py", "pyproject.toml", "uv.lock"]
+watchPatterns = [
+  "**/*.py",
+  "pyproject.toml",
+  "uv.lock",
+  "Dockerfile",
+  "entrypoint.sh",
+  "railway.worker.toml",
+]
 
 [deploy]
 restartPolicyType = "ON_FAILURE"
