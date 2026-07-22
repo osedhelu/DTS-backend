@@ -1,9 +1,13 @@
+import logging
+
 from features.notifications.application.dto import SendChatPushDTO, SendPushDTO
 from features.notifications.domain.entities import NotificationType, PushTemplate
 from features.notifications.domain.repositories import (
     DeviceTokenRepository,
     PushNotificationClient,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SendPushUseCase:
@@ -19,6 +23,12 @@ class SendPushUseCase:
         template = PushTemplate.for_status(dto.order_status)
         tokens = self._device_token_repository.list_active_tokens_for_user(dto.user_id)
         if not tokens:
+            logger.info(
+                "push_no_device_token user_id=%s order_id=%s status=%s",
+                dto.user_id,
+                dto.order_id,
+                dto.order_status.value,
+            )
             return []
 
         data = {
@@ -42,11 +52,24 @@ class SendPushUseCase:
             )
             message_ids.append(message_id)
 
+        logger.info(
+            "push_sent user_id=%s order_id=%s status=%s tokens=%s message_ids=%s",
+            dto.user_id,
+            dto.order_id,
+            dto.order_status.value,
+            len(tokens),
+            len(message_ids),
+        )
         return message_ids
 
     def execute_chat(self, dto: SendChatPushDTO) -> list[str]:
         tokens = self._device_token_repository.list_active_tokens_for_user(dto.user_id)
         if not tokens:
+            logger.info(
+                "chat_push_no_device_token user_id=%s order_id=%s",
+                dto.user_id,
+                dto.order_id,
+            )
             return []
 
         preview = (dto.preview or "").strip()[:120] or "Tienes un mensaje sobre tu pedido"
@@ -70,4 +93,11 @@ class SendPushUseCase:
                     data=data,
                 )
             )
+        logger.info(
+            "chat_push_sent user_id=%s order_id=%s tokens=%s message_ids=%s",
+            dto.user_id,
+            dto.order_id,
+            len(tokens),
+            len(message_ids),
+        )
         return message_ids

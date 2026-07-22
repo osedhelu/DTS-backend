@@ -56,8 +56,8 @@ DEFAULT_FROM_EMAIL=noreply@dts.local
 WEB_URL=https://${{DTS-web-admin.RAILWAY_PUBLIC_DOMAIN}}
 
 # Multi Firebase Admin SDK (apps nombradas customer + driver)
-# Customer = discorp-4a37b (flutter-customer Auth + FCM)
-# Driver   = dtsdrop-85330 (flutter-driver Auth + FCM)
+# Ambas apps Flutter (customer + driver) usan dtsdrop-85330.
+# Legacy discorp-4a37b está deprecado: no uses esas credenciales.
 FIREBASE_CUSTOMER_CREDENTIALS_PATH=/app/secrets/firebase-customer.json
 FIREBASE_DRIVER_CREDENTIALS_PATH=/app/secrets/firebase-driver.json
 # Contenido JSON (una línea cada uno). El entrypoint los materializa al arrancar.
@@ -69,18 +69,18 @@ FIREBASE_DRIVER_CREDENTIALS_PATH=/app/secrets/firebase-driver.json
 # FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 ```
 
-### Dual service accounts (obligatorio para Google/Apple driver + push ambos)
+### Dual service accounts (obligatorio para Google/Apple + push ambos)
 
-1. En Firebase Console → **discorp-4a37b** → Project settings → Service accounts → Generate new private key → JSON de **customer**.
-2. En Firebase Console → **dtsdrop-85330** → mismo flujo → JSON de **driver**.
+1. En Firebase Console → **dtsdrop-85330** → Project settings → Service accounts → Generate new private key.
+2. Usa el **mismo** JSON de dtsdrop para customer y driver (o dos claves del mismo proyecto).
 3. En Railway (servicios **DTS-backend** y **DTS-celery-worker**), variables:
 
 | Variable | Origen |
 |----------|--------|
 | `FIREBASE_CUSTOMER_CREDENTIALS_PATH` | `/app/secrets/firebase-customer.json` |
 | `FIREBASE_DRIVER_CREDENTIALS_PATH` | `/app/secrets/firebase-driver.json` |
-| `FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON` | Contenido del JSON discorp (una línea) |
-| `FIREBASE_DRIVER_SERVICE_ACCOUNT_JSON` | Contenido del JSON dtsdrop (una línea) |
+| `FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON` | Contenido del JSON **dtsdrop** (una línea) |
+| `FIREBASE_DRIVER_SERVICE_ACCOUNT_JSON` | Contenido del JSON **dtsdrop** (una línea) |
 
 `entrypoint.sh` escribe ambos archivos al arrancar. Si solo existe `FIREBASE_SERVICE_ACCOUNT_JSON` (legacy), se materializa como customer vía compat.
 
@@ -89,13 +89,13 @@ Tras setear secrets: **redeploy** API + worker (y beat si aplica) y confirmar mi
 Script (desde `backend/`):
 
 ```bash
-# Dual (recomendado)
-FIREBASE_CUSTOMER_JSON_FILE=~/Downloads/discorp-adminsdk.json \
+# Dual (recomendado) — ambos JSON del proyecto dtsdrop-85330
+FIREBASE_CUSTOMER_JSON_FILE=~/Downloads/dtsdrop-adminsdk.json \
 FIREBASE_DRIVER_JSON_FILE=~/Downloads/dtsdrop-adminsdk.json \
   ./scripts/setup-railway-fcm.sh
 
 # Solo customer (compat)
-FIREBASE_JSON_FILE=~/Downloads/discorp-adminsdk.json ./scripts/setup-railway-fcm.sh
+FIREBASE_JSON_FILE=~/Downloads/dtsdrop-adminsdk.json ./scripts/setup-railway-fcm.sh
 ```
 
 Luego:
@@ -128,7 +128,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST \
   -d '{"id_token":"test","role":"driver"}'
 ```
 
-Push manual: cambiar un pedido a `ON_THE_WAY` en admin o usar Firebase Console → Cloud Messaging **del proyecto correcto** (discorp vs dtsdrop) con el token del dispositivo.
+Push manual: cambiar un pedido a `ON_THE_WAY` / `accepted_by_merchant` en admin o usar Firebase Console → Cloud Messaging del proyecto **dtsdrop-85330** con el token del dispositivo. Ver checklist en `docs/PUSH_NOTIFICATIONS.md`.
 
 Sin comillas en el dashboard Railway.
 

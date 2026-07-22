@@ -1,3 +1,5 @@
+import logging
+
 from celery import shared_task
 
 from features.delivery.infrastructure.repositories import DjangoDriverAvailabilityRepository
@@ -6,6 +8,7 @@ from features.notifications.application.recipient_resolver import resolve_recipi
 from features.notifications.application.use_cases.send_order_email import SendOrderEmailUseCase
 from features.notifications.application.use_cases.send_push import SendPushUseCase
 from features.notifications.domain.services import OrderStatusNotificationMapper
+from features.notifications.domain.value_objects import NotificationRecipient
 from features.notifications.infrastructure.fcm_client import FCMClient, get_fcm_client
 from features.notifications.infrastructure.repositories import (
     DjangoCustomerEmailRepository,
@@ -14,6 +17,8 @@ from features.notifications.infrastructure.repositories import (
 from features.orders.domain.exceptions import OrderNotFoundError
 from features.orders.domain.value_objects import OrderStatus
 from features.orders.infrastructure.repositories import DjangoOrderRepository
+
+logger = logging.getLogger(__name__)
 
 
 def _build_send_push_use_case(
@@ -45,6 +50,24 @@ def _pickup_location_for_order(store_id: int):
     return GeoLocation(latitude=store.latitude, longitude=store.longitude)
 
 
+def _empty_recipients_reason(
+    order_status: OrderStatus,
+    pickup_location,
+) -> str:
+    recipients = OrderStatusNotificationMapper.recipients_for_status(order_status)
+    if not recipients:
+        return "unsupported_recipients"
+    if NotificationRecipient.ONLINE_DRIVERS in recipients:
+        if pickup_location is None:
+            return "no_store_location"
+        return "no_online_drivers_in_radius"
+    if NotificationRecipient.CUSTOMER in recipients:
+        return "no_customer"
+    if NotificationRecipient.ASSIGNED_DRIVER in recipients:
+        return "no_assigned_driver"
+    return "no_recipients"
+
+
 def execute_order_push(order_id: int, order_status: str) -> str:
     order_repository = DjangoOrderRepository()
     order = order_repository.get_by_id(order_id)
@@ -53,13 +76,38 @@ def execute_order_push(order_id: int, order_status: str) -> str:
 
     status = OrderStatus(order_status)
     if not OrderStatusNotificationMapper.supports_status(status):
+        logger.info(
+            "push_skipped order_id=%s status=%s reason=unsupported_status",
+            order_id,
+            order_status,
+        )
         return f"skipped:{order_id}:unsupported_status"
 
+    pickup_location = _pickup_location_for_order(order.store_id)
     user_ids = resolve_recipient_user_ids(
         order,
         status,
         DjangoDriverAvailabilityRepository(),
-        pickup_location=_pickup_location_for_order(order.store_id),
+        pickup_location=pickup_location,
+    )
+
+    if not user_ids:
+        reason = _empty_recipients_reason(status, pickup_location)
+        logger.info(
+            "push_skipped order_id=%s status=%s reason=%s "
+            "recipient_ids=[] pickup_location=%s",
+            order_id,
+            status.value,
+            reason,
+            pickup_location is not None,
+        )
+        return f"skipped:{order_id}:{reason}"
+
+    logger.info(
+        "push_dispatch order_id=%s status=%s recipient_ids=%s",
+        order_id,
+        status.value,
+        user_ids,
     )
 
     message_ids: list[str] = []
@@ -87,6 +135,13 @@ def execute_order_push(order_id: int, order_status: str) -> str:
             )
         )
 
+    logger.info(
+        "push_finished order_id=%s status=%s recipients=%s message_ids=%s",
+        order_id,
+        status.value,
+        len(user_ids),
+        len(message_ids),
+    )
     return f"sent:{order_id}:{len(message_ids)}"
 
 
