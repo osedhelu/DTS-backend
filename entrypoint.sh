@@ -21,7 +21,7 @@ materialize_fcm_credentials() {
     "${FCM_CREDENTIALS_PATH:-}" \
     "${FIREBASE_SERVICE_ACCOUNT_JSON:-}"
 
-  # Multi Firebase: customer (discorp) + driver (dtsdrop)
+  # Multi Firebase: customer + driver (ambos dtsdrop-85330)
   _write_firebase_json \
     "${FIREBASE_CUSTOMER_CREDENTIALS_PATH:-}" \
     "${FIREBASE_CUSTOMER_SERVICE_ACCOUNT_JSON:-${FIREBASE_SERVICE_ACCOUNT_JSON:-}}"
@@ -101,4 +101,26 @@ if [[ "${RUN_MIGRATIONS:-true}" == "true" ]]; then
   uv run --no-dev python manage.py collectstatic --noinput --clear
 fi
 
-exec "$@"
+# SERVICE_MODE evita que el worker/beat hereden el CMD Daphne del Dockerfile
+# cuando Railway no aplica startCommand de railway.worker.toml.
+case "${SERVICE_MODE:-api}" in
+  worker)
+    echo "==> Iniciando Celery worker (SERVICE_MODE=worker)..."
+    exec uv run celery -A core worker \
+      --loglevel="${CELERY_LOGLEVEL:-info}" \
+      --concurrency "${CELERY_CONCURRENCY:-2}"
+    ;;
+  beat)
+    echo "==> Iniciando Celery beat (SERVICE_MODE=beat)..."
+    exec uv run celery -A core beat \
+      --loglevel="${CELERY_LOGLEVEL:-info}" \
+      --schedule "${CELERY_BEAT_SCHEDULE:-/tmp/celerybeat-schedule}"
+    ;;
+  api|*)
+    if [[ "$#" -gt 0 ]]; then
+      exec "$@"
+    fi
+    echo "==> Iniciando Daphne API..."
+    exec uv run daphne -b 0.0.0.0 -p "${PORT:-8000}" core.asgi:application
+    ;;
+esac
