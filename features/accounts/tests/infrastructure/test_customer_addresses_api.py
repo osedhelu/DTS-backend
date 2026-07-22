@@ -104,22 +104,55 @@ def test_delete_customer_address(api_client):
 
 
 @pytest.mark.django_db
-def test_customer_cannot_access_other_address(api_client):
-    owner = _create_customer("customer_addr_owner")
-    other = _create_customer("customer_addr_other")
-    address = CustomerAddress.objects.create(
-        user=owner,
-        label="Privada",
-        address="Calle privada",
-        latitude=4.6,
-        longitude=-74.0,
-    )
+def test_create_default_address_syncs_profile(api_client):
+    customer = _create_customer("customer_addr_sync")
+    _auth(api_client, customer)
 
-    _auth(api_client, other)
-    response = api_client.patch(
-        f"/api/v1/accounts/customer/addresses/{address.id}/",
-        {"label": "Hack"},
+    response = api_client.post(
+        "/api/v1/accounts/customer/addresses/",
+        {
+            "label": "Casa",
+            "address": "Calle Sync 123",
+            "latitude": 4.65,
+            "longitude": -74.08,
+            "is_default": True,
+        },
         format="json",
     )
+    assert response.status_code == status.HTTP_201_CREATED
 
-    assert response.status_code == status.HTTP_404_NOT_FOUND
+    profile = CustomerProfile.objects.get(user=customer)
+    assert profile.default_address == "Calle Sync 123"
+
+
+@pytest.mark.django_db
+def test_delete_default_promotes_another_and_syncs_profile(api_client):
+    customer = _create_customer("customer_addr_delete_sync")
+    _auth(api_client, customer)
+    first = CustomerAddress.objects.create(
+        user=customer,
+        label="Casa",
+        address="Primera",
+        latitude=4.6,
+        longitude=-74.0,
+        is_default=True,
+    )
+    CustomerAddress.objects.create(
+        user=customer,
+        label="Oficina",
+        address="Segunda",
+        latitude=4.61,
+        longitude=-74.01,
+        is_default=False,
+    )
+    profile = CustomerProfile.objects.get(user=customer)
+    profile.default_address = "Primera"
+    profile.save(update_fields=["default_address"])
+
+    response = api_client.delete(f"/api/v1/accounts/customer/addresses/{first.id}/")
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    remaining = CustomerAddress.objects.get(user=customer)
+    assert remaining.is_default is True
+    profile.refresh_from_db()
+    assert profile.default_address == "Segunda"

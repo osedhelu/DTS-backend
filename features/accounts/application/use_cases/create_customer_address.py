@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from features.accounts.application.dto import CreateCustomerAddressDTO, CustomerAddressResult
+from features.accounts.application.sync_default_address import sync_profile_default_address
 from features.accounts.infrastructure.models import CustomerAddress
 
 
@@ -20,6 +21,9 @@ class CreateCustomerAddressUseCase:
             longitude=dto.longitude,
             is_default=dto.is_default,
         )
+
+        if address.is_default:
+            sync_profile_default_address(dto.customer_id)
 
         return CustomerAddressResult(
             id=address.id,

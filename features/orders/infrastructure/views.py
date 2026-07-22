@@ -134,6 +134,9 @@ class OrderListCreateView(APIView):
         except DomainValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        from features.cart.application.use_cases.clear_cart import clear_customer_cart
+
+        clear_customer_cart(request.user.id)
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
@@ -196,6 +199,9 @@ class ServiceOrderCreateView(APIView):
         except DomainValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        from features.cart.application.use_cases.clear_cart import clear_customer_cart
+
+        clear_customer_cart(request.user.id)
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 

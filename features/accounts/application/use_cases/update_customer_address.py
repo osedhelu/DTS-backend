@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from features.accounts.application.dto import CustomerAddressResult, UpdateCustomerAddressDTO
+from features.accounts.application.sync_default_address import sync_profile_default_address
 from features.accounts.domain.exceptions import CustomerAddressNotFoundError
 from features.accounts.infrastructure.models import CustomerAddress
 
@@ -37,6 +38,9 @@ class UpdateCustomerAddressUseCase:
             update_fields.append("is_default")
 
         address.save(update_fields=update_fields)
+
+        if address.is_default or dto.is_default is not None or dto.address is not None:
+            sync_profile_default_address(dto.customer_id)
 
         return CustomerAddressResult(
             id=address.id,
