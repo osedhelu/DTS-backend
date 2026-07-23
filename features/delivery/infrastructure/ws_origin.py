@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from urllib.parse import urlparse
-
-from channels.security.websocket import OriginValidator, WebsocketDenier
+from channels.security.websocket import OriginValidator
 from django.conf import settings
 
 
