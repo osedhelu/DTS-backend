@@ -25,4 +25,7 @@ class GetDriverProfileUseCase:
             bank_name=profile.bank_name,
             bank_account_number=profile.bank_account_number,
             bank_account_type=profile.bank_account_type,
+            work_center_latitude=profile.work_center_latitude,
+            work_center_longitude=profile.work_center_longitude,
+            work_radius_km=float(profile.work_radius_km),
         )

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from features.delivery.domain.constants import MAX_DRIVER_OFFER_DISTANCE_KM
+from features.delivery.domain.constants import DEFAULT_RADIUS_KM
 from features.delivery.domain.exceptions import DriverProfileNotFoundForOffersError
 from features.delivery.domain.services import DriverMatcher
 from features.delivery.infrastructure.models import DriverOfferRejection
@@ -24,9 +24,7 @@ class DriverOfferItem:
 
 
 class ListDriverOffersUseCase:
-    """Lista pedidos SEARCHING_DRIVER cercanos, excluyendo rechazos del conductor."""
-
-    MAX_DISTANCE_KM = MAX_DRIVER_OFFER_DISTANCE_KM
+    """Lista pedidos SEARCHING_DRIVER en la zona de trabajo del conductor."""
 
     def execute(self, driver_id: int) -> list[DriverOfferItem]:
         try:
@@ -36,13 +34,21 @@ class ListDriverOffersUseCase:
                 "El conductor no tiene perfil configurado"
             ) from exc
 
-        if not profile.has_last_location:
+        if profile.has_work_center:
+            center = GeoLocation(
+                latitude=profile.work_center_latitude,
+                longitude=profile.work_center_longitude,
+            )
+            radius_km = float(profile.work_radius_km)
+        elif profile.has_last_location:
+            # Legacy: sin zona configurada → GPS + radio default
+            center = GeoLocation(
+                latitude=profile.last_latitude,
+                longitude=profile.last_longitude,
+            )
+            radius_km = DEFAULT_RADIUS_KM
+        else:
             return []
-
-        driver_location = GeoLocation(
-            latitude=profile.last_latitude,
-            longitude=profile.last_longitude,
-        )
 
         rejected_ids = set(
             DriverOfferRejection.objects.filter(driver_id=driver_id).values_list(
@@ -68,8 +74,8 @@ class ListDriverOffersUseCase:
             store_location = GeoLocation(
                 latitude=store.latitude, longitude=store.longitude
             )
-            distance = DriverMatcher.distance_km(driver_location, store_location)
-            if distance > self.MAX_DISTANCE_KM:
+            distance = DriverMatcher.distance_km(center, store_location)
+            if distance > radius_km:
                 continue
             offers.append(
                 DriverOfferItem(

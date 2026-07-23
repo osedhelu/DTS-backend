@@ -143,7 +143,34 @@ class DriverProfileSerializer(serializers.Serializer):
     bank_account_type = serializers.CharField(
         max_length=30, required=False, allow_blank=True
     )
+    work_center_latitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-90,
+        max_value=90,
+    )
+    work_center_longitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-180,
+        max_value=180,
+    )
+    work_radius_km = serializers.FloatField(required=False, min_value=1, max_value=500)
     complete_onboarding = serializers.BooleanField(required=False, default=False)
+
+    def validate(self, attrs):
+        has_lat = "work_center_latitude" in attrs
+        has_lng = "work_center_longitude" in attrs
+        if has_lat ^ has_lng:
+            raise serializers.ValidationError(
+                "Debes enviar work_center_latitude y work_center_longitude juntos."
+            )
+        if has_lat and attrs.get("work_center_latitude") is None:
+            if attrs.get("work_center_longitude") is not None:
+                raise serializers.ValidationError(
+                    "Debes enviar work_center_latitude y work_center_longitude juntos."
+                )
+        return attrs
 
 
 class DriverProfileResponseSerializer(serializers.Serializer):
@@ -159,6 +186,9 @@ class DriverProfileResponseSerializer(serializers.Serializer):
     bank_name = serializers.CharField(allow_blank=True)
     bank_account_number = serializers.CharField(allow_blank=True)
     bank_account_type = serializers.CharField(allow_blank=True)
+    work_center_latitude = serializers.FloatField(allow_null=True)
+    work_center_longitude = serializers.FloatField(allow_null=True)
+    work_radius_km = serializers.FloatField()
 
 
 class DriverEarningBreakdownSerializer(serializers.Serializer):
@@ -202,6 +232,28 @@ class CustomerProfileSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     photo_url = serializers.URLField(required=False, allow_blank=True)
     default_address = serializers.CharField(required=False, allow_blank=True)
+    search_center_latitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-90,
+        max_value=90,
+    )
+    search_center_longitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-180,
+        max_value=180,
+    )
+    search_radius_km = serializers.FloatField(required=False, min_value=1, max_value=500)
+
+    def validate(self, attrs):
+        has_lat = "search_center_latitude" in attrs
+        has_lng = "search_center_longitude" in attrs
+        if has_lat ^ has_lng:
+            raise serializers.ValidationError(
+                "Debes enviar search_center_latitude y search_center_longitude juntos."
+            )
+        return attrs
 
 
 class CustomerProfileResponseSerializer(serializers.Serializer):
@@ -210,6 +262,9 @@ class CustomerProfileResponseSerializer(serializers.Serializer):
     phone = serializers.CharField(allow_blank=True)
     photo_url = serializers.CharField(allow_blank=True)
     default_address = serializers.CharField(allow_blank=True)
+    search_center_latitude = serializers.FloatField(allow_null=True)
+    search_center_longitude = serializers.FloatField(allow_null=True)
+    search_radius_km = serializers.FloatField()
 
 
 class CustomerAddressSerializer(serializers.Serializer):

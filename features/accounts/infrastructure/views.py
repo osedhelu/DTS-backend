@@ -468,6 +468,9 @@ def _driver_profile_response(result) -> dict:
         "bank_name": result.bank_name,
         "bank_account_number": result.bank_account_number,
         "bank_account_type": result.bank_account_type,
+        "work_center_latitude": result.work_center_latitude,
+        "work_center_longitude": result.work_center_longitude,
+        "work_radius_km": result.work_radius_km,
     }
 
 
@@ -530,7 +533,15 @@ class DriverProfileView(APIView):
                     bank_name=data.get("bank_name"),
                     bank_account_number=data.get("bank_account_number"),
                     bank_account_type=data.get("bank_account_type"),
+                    work_center_latitude=data.get("work_center_latitude"),
+                    work_center_longitude=data.get("work_center_longitude"),
+                    work_radius_km=data.get("work_radius_km"),
                     complete_onboarding=bool(data.get("complete_onboarding", False)),
+                    clear_work_center=(
+                        "work_center_latitude" in data
+                        and data.get("work_center_latitude") is None
+                        and data.get("work_center_longitude") is None
+                    ),
                 )
             )
         except DriverProfileNotFoundError as exc:
@@ -598,6 +609,9 @@ def _customer_profile_response(result) -> dict:
         "phone": result.phone,
         "photo_url": result.photo_url,
         "default_address": result.default_address,
+        "search_center_latitude": result.search_center_latitude,
+        "search_center_longitude": result.search_center_longitude,
+        "search_radius_km": result.search_radius_km,
     }
 
 
@@ -666,6 +680,14 @@ class CustomerProfileView(APIView):
                     phone=data.get("phone"),
                     photo_url=data.get("photo_url"),
                     default_address=data.get("default_address"),
+                    search_center_latitude=data.get("search_center_latitude"),
+                    search_center_longitude=data.get("search_center_longitude"),
+                    search_radius_km=data.get("search_radius_km"),
+                    clear_search_center=(
+                        "search_center_latitude" in data
+                        and data.get("search_center_latitude") is None
+                        and data.get("search_center_longitude") is None
+                    ),
                 )
             )
         except CustomerProfileNotFoundError as exc:

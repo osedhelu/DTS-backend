@@ -67,13 +67,26 @@ class DjangoDriverAvailabilityRepository:
             last_latitude__isnull=False,
             last_longitude__isnull=False,
         )
-        return [
-            OnlineDriver(
-                driver_id=profile.user_id,
-                location=GeoLocation(
-                    latitude=profile.last_latitude,
-                    longitude=profile.last_longitude,
-                ),
+        drivers: list[OnlineDriver] = []
+        for profile in profiles:
+            work_center = None
+            if (
+                profile.work_center_latitude is not None
+                and profile.work_center_longitude is not None
+            ):
+                work_center = GeoLocation(
+                    latitude=profile.work_center_latitude,
+                    longitude=profile.work_center_longitude,
+                )
+            drivers.append(
+                OnlineDriver(
+                    driver_id=profile.user_id,
+                    location=GeoLocation(
+                        latitude=profile.last_latitude,
+                        longitude=profile.last_longitude,
+                    ),
+                    work_center=work_center,
+                    work_radius_km=float(profile.work_radius_km),
+                )
             )
-            for profile in profiles
-        ]
+        return drivers

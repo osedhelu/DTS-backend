@@ -144,12 +144,22 @@ class DriverProfile(models.Model):
     is_online = models.BooleanField(default=False)
     last_latitude = models.FloatField(null=True, blank=True)
     last_longitude = models.FloatField(null=True, blank=True)
+    work_center_latitude = models.FloatField(null=True, blank=True)
+    work_center_longitude = models.FloatField(null=True, blank=True)
+    work_radius_km = models.FloatField(default=5.0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     @property
     def onboarding_completed(self) -> bool:
         return self.onboarding_completed_at is not None
+
+    @property
+    def has_work_center(self) -> bool:
+        return (
+            self.work_center_latitude is not None
+            and self.work_center_longitude is not None
+        )
 
     class Meta:
         db_table = "accounts_driver_profile"
@@ -178,8 +188,18 @@ class CustomerProfile(models.Model):
     phone = models.CharField(max_length=20)
     photo_url = models.URLField(blank=True)
     default_address = models.TextField(blank=True)
+    search_center_latitude = models.FloatField(null=True, blank=True)
+    search_center_longitude = models.FloatField(null=True, blank=True)
+    search_radius_km = models.FloatField(default=5.0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def has_search_center(self) -> bool:
+        return (
+            self.search_center_latitude is not None
+            and self.search_center_longitude is not None
+        )
 
     class Meta:
         db_table = "accounts_customer_profile"

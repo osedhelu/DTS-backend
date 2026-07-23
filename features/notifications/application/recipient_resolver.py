@@ -1,4 +1,3 @@
-from features.delivery.domain.constants import MAX_DRIVER_OFFER_DISTANCE_KM
 from features.delivery.domain.repositories import DriverAvailabilityRepository
 from features.delivery.domain.services import DriverMatcher
 from features.notifications.domain.services import OrderStatusNotificationMapper
@@ -14,7 +13,6 @@ def resolve_recipient_user_ids(
     driver_availability_repository: DriverAvailabilityRepository,
     *,
     pickup_location: GeoLocation | None = None,
-    max_driver_distance_km: float = MAX_DRIVER_OFFER_DISTANCE_KM,
 ) -> list[int]:
     recipients = OrderStatusNotificationMapper.recipients_for_status(order_status)
     if not recipients:
@@ -34,8 +32,7 @@ def resolve_recipient_user_ids(
             online_drivers = [
                 driver
                 for driver in online_drivers
-                if DriverMatcher.distance_km(pickup_location, driver.location)
-                <= max_driver_distance_km
+                if DriverMatcher.driver_covers_store(driver, pickup_location)
             ]
         user_ids.extend(driver.driver_id for driver in online_drivers)
 

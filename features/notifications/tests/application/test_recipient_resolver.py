@@ -6,7 +6,6 @@ from features.orders.domain.entities import Order
 from features.orders.domain.value_objects import OrderStatus, OrderType
 from features.stores.domain.value_objects import GeoLocation
 
-# Bogotá approx as store pickup
 _STORE = GeoLocation(latitude=4.7100, longitude=-74.0720)
 
 
@@ -30,7 +29,7 @@ def test_resolve_recipient_user_ids_for_on_the_way_customer():
     driver_repository.list_online_drivers.assert_not_called()
 
 
-def test_resolve_recipient_user_ids_for_ready_for_pickup_within_5km():
+def test_resolve_recipient_user_ids_for_ready_for_pickup_within_work_zone():
     order = Order(
         id=42,
         customer_id=10,
@@ -39,17 +38,30 @@ def test_resolve_recipient_user_ids_for_ready_for_pickup_within_5km():
         order_type=OrderType.DELIVERY,
     )
     driver_repository = MagicMock()
-    # ~2.2 km north of store
-    near = OnlineDriver(
+    # GPS lejos pero zona de trabajo cubre la tienda
+    in_zone = OnlineDriver(
         driver_id=21,
-        location=GeoLocation(latitude=4.7300, longitude=-74.0720),
+        location=GeoLocation(latitude=5.0, longitude=-74.0),
+        work_center=_STORE,
+        work_radius_km=35.0,
     )
-    # ~11 km north of store
-    far = OnlineDriver(
+    # GPS cerca pero zona lejos (radio 1 km en otro punto)
+    out_zone = OnlineDriver(
         driver_id=22,
+        location=GeoLocation(latitude=4.7110, longitude=-74.0720),
+        work_center=GeoLocation(latitude=5.5, longitude=-74.0),
+        work_radius_km=1.0,
+    )
+    # Sin zona: fallback GPS (~11 km → fuera del default 5)
+    legacy_far = OnlineDriver(
+        driver_id=23,
         location=GeoLocation(latitude=4.8100, longitude=-74.0720),
     )
-    driver_repository.list_online_drivers.return_value = [near, far]
+    driver_repository.list_online_drivers.return_value = [
+        in_zone,
+        out_zone,
+        legacy_far,
+    ]
 
     user_ids = resolve_recipient_user_ids(
         order,

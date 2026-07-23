@@ -65,6 +65,9 @@ class DriverProfileResult:
     bank_name: str = ""
     bank_account_number: str = ""
     bank_account_type: str = ""
+    work_center_latitude: float | None = None
+    work_center_longitude: float | None = None
+    work_radius_km: float = 5.0
 
 
 @dataclass(frozen=True)
@@ -79,7 +82,11 @@ class UpdateDriverProfileDTO:
     bank_name: str | None = None
     bank_account_number: str | None = None
     bank_account_type: str | None = None
+    work_center_latitude: float | None = None
+    work_center_longitude: float | None = None
+    work_radius_km: float | None = None
     complete_onboarding: bool = False
+    clear_work_center: bool = False
 
 
 @dataclass(frozen=True)
@@ -106,6 +113,9 @@ class CustomerProfileResult:
     phone: str
     photo_url: str
     default_address: str
+    search_center_latitude: float | None = None
+    search_center_longitude: float | None = None
+    search_radius_km: float = 5.0
 
 
 @dataclass(frozen=True)
@@ -115,6 +125,10 @@ class UpdateCustomerProfileDTO:
     phone: str | None = None
     photo_url: str | None = None
     default_address: str | None = None
+    search_center_latitude: float | None = None
+    search_center_longitude: float | None = None
+    search_radius_km: float | None = None
+    clear_search_center: bool = False
 
 
 @dataclass(frozen=True)

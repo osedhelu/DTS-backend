@@ -3,9 +3,30 @@ from django.utils import timezone
 from features.accounts.application.dto import DriverProfileResult, UpdateDriverProfileDTO
 from features.accounts.domain.exceptions import DriverProfileNotFoundError
 from features.accounts.infrastructure.models import DriverProfile
+from features.delivery.domain.constants import normalize_radius_km
 
 
 _VEHICLE_TYPES = frozenset({"moto", "carro", "bici"})
+
+
+def _to_result(profile: DriverProfile) -> DriverProfileResult:
+    return DriverProfileResult(
+        full_name=profile.full_name,
+        phone=profile.phone,
+        license_number=profile.license_number,
+        vehicle_type=profile.vehicle_type,
+        vehicle_plate=profile.vehicle_plate,
+        photo_url=profile.photo_url,
+        onboarding_completed=profile.onboarding_completed,
+        is_online=profile.is_online,
+        verification_status=profile.verification_status,
+        bank_name=profile.bank_name,
+        bank_account_number=profile.bank_account_number,
+        bank_account_type=profile.bank_account_type,
+        work_center_latitude=profile.work_center_latitude,
+        work_center_longitude=profile.work_center_longitude,
+        work_radius_km=float(profile.work_radius_km),
+    )
 
 
 class UpdateDriverProfileUseCase:
@@ -54,6 +75,36 @@ class UpdateDriverProfileUseCase:
             profile.bank_account_type = dto.bank_account_type.strip()
             update_fields.append("bank_account_type")
 
+        if dto.clear_work_center:
+            profile.work_center_latitude = None
+            profile.work_center_longitude = None
+            update_fields.extend(["work_center_latitude", "work_center_longitude"])
+        elif (
+            dto.work_center_latitude is not None
+            or dto.work_center_longitude is not None
+        ):
+            from features.accounts.domain.exceptions import DomainValidationError
+
+            if (
+                dto.work_center_latitude is None
+                or dto.work_center_longitude is None
+            ):
+                raise DomainValidationError(
+                    "Debes enviar work_center_latitude y work_center_longitude juntos"
+                )
+            profile.work_center_latitude = float(dto.work_center_latitude)
+            profile.work_center_longitude = float(dto.work_center_longitude)
+            update_fields.extend(["work_center_latitude", "work_center_longitude"])
+
+        if dto.work_radius_km is not None:
+            from features.accounts.domain.exceptions import DomainValidationError
+
+            try:
+                profile.work_radius_km = normalize_radius_km(dto.work_radius_km)
+            except ValueError as exc:
+                raise DomainValidationError(str(exc)) from exc
+            update_fields.append("work_radius_km")
+
         if dto.complete_onboarding:
             missing = []
             if not (profile.full_name or "").strip():
@@ -74,18 +125,4 @@ class UpdateDriverProfileUseCase:
             update_fields.append("onboarding_completed_at")
 
         profile.save(update_fields=update_fields)
-
-        return DriverProfileResult(
-            full_name=profile.full_name,
-            phone=profile.phone,
-            license_number=profile.license_number,
-            vehicle_type=profile.vehicle_type,
-            vehicle_plate=profile.vehicle_plate,
-            photo_url=profile.photo_url,
-            onboarding_completed=profile.onboarding_completed,
-            is_online=profile.is_online,
-            verification_status=profile.verification_status,
-            bank_name=profile.bank_name,
-            bank_account_number=profile.bank_account_number,
-            bank_account_type=profile.bank_account_type,
-        )
+        return _to_result(profile)

@@ -35,6 +35,10 @@ class StoreListCreateView(APIView):
         return [AllowAny()]
 
     def get(self, request):
+        from features.accounts.infrastructure.models import CustomerProfile
+        from features.delivery.domain.constants import normalize_radius_km
+        from features.delivery.domain.services import DriverMatcher
+        from features.stores.domain.value_objects import GeoLocation
         from features.stores.infrastructure.repositories import DjangoStoreRepository
         from features.stores.infrastructure.serializers import StoreSerializer
 
@@ -43,6 +47,61 @@ class StoreListCreateView(APIView):
 
         repository = DjangoStoreRepository()
         stores = repository.list_all(status=parsed_status)
+
+        center: GeoLocation | None = None
+        radius_km: float | None = None
+
+        lat_raw = request.query_params.get("latitude")
+        lng_raw = request.query_params.get("longitude")
+        radius_raw = request.query_params.get("radius_km")
+
+        if lat_raw is not None or lng_raw is not None or radius_raw is not None:
+            if lat_raw is None or lng_raw is None:
+                return Response(
+                    {"detail": "Debes enviar latitude y longitude juntos"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                center = GeoLocation(
+                    latitude=float(lat_raw),
+                    longitude=float(lng_raw),
+                )
+                radius_km = normalize_radius_km(
+                    radius_raw if radius_raw is not None else None
+                )
+            except (TypeError, ValueError) as exc:
+                return Response(
+                    {"detail": str(exc)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif request.user.is_authenticated and getattr(
+            request.user, "is_customer", False
+        ):
+            try:
+                profile = CustomerProfile.objects.get(user_id=request.user.id)
+            except CustomerProfile.DoesNotExist:
+                profile = None
+            if profile is not None and profile.has_search_center:
+                center = GeoLocation(
+                    latitude=profile.search_center_latitude,
+                    longitude=profile.search_center_longitude,
+                )
+                radius_km = float(profile.search_radius_km)
+
+        if center is not None and radius_km is not None:
+            stores = [
+                store
+                for store in stores
+                if DriverMatcher.covers_point(
+                    point=GeoLocation(
+                        latitude=store.latitude,
+                        longitude=store.longitude,
+                    ),
+                    center=center,
+                    radius_km=radius_km,
+                )
+            ]
+
         return paginate_list(
             request,
             stores,
