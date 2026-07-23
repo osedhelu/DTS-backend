@@ -13,15 +13,17 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 django_asgi_app = get_asgi_application()
 
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
-from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
 
 from core.routing import websocket_urlpatterns  # noqa: E402
 from features.delivery.infrastructure.ws_auth import JwtAuthMiddlewareStack  # noqa: E402
+from features.delivery.infrastructure.ws_origin import (  # noqa: E402
+    NativeClientOriginValidator,
+)
 
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": AllowedHostsOriginValidator(
+        "websocket": NativeClientOriginValidator(
             JwtAuthMiddlewareStack(URLRouter(websocket_urlpatterns))
         ),
     }
