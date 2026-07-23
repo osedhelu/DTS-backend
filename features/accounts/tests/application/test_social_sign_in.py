@@ -34,18 +34,29 @@ def test_google_signin_usecase_creates_driver():
 
 
 @pytest.mark.django_db
-def test_google_signin_usecase_creates_customer_default():
+def test_google_signin_relinks_google_uid_on_firebase_migration():
+    """Mismo email+rol con UID nuevo (migración Firebase) debe revinclar, no 400."""
+    user = CustomUser.objects.create_user(
+        username="migrate_me",
+        email="migrate@test.com",
+        password="x",
+        role=UserRole.CUSTOMER,
+    )
+    user.google_uid = "old-firebase-uid"
+    user.auth_provider = "google"
+    user.save(update_fields=["google_uid", "auth_provider"])
+
     verifier = MagicMock()
     verifier.verify_google_id_token.return_value = VerifiedSocialIdentity(
-        uid="g-cust",
-        email="gcust@test.com",
-        display_name="Cust",
+        uid="new-dtsdrop-uid",
+        email="migrate@test.com",
+        display_name="Migrated",
         provider="google",
     )
-    GoogleSignInUseCase(verifier).execute("tok")
-    user = CustomUser.objects.get(email="gcust@test.com")
-    assert user.role == UserRole.CUSTOMER
-    assert CustomerProfile.objects.filter(user=user).exists()
+    tokens = GoogleSignInUseCase(verifier).execute("tok", role=UserRole.CUSTOMER)
+    assert "access" in tokens
+    user.refresh_from_db()
+    assert user.google_uid == "new-dtsdrop-uid"
 
 
 @pytest.mark.django_db

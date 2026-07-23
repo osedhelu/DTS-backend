@@ -67,10 +67,6 @@ class GoogleSignInUseCase:
         assert identity.email is not None
         user = CustomUser.objects.filter(email=identity.email).first()
         if user is not None:
-            if user.google_uid and user.google_uid != identity.uid:
-                raise GoogleAccountConflictError(
-                    "El email ya está vinculado a otra cuenta de Google"
-                )
             if user.role != role:
                 # #region agent log
                 logger.warning(
@@ -85,6 +81,15 @@ class GoogleSignInUseCase:
                     f"(auth={user.auth_provider or 'local'}) y pediste '{role}'. "
                     "En la app conductor usa otra cuenta Google, o entra con usuario/contraseña "
                     "si ese rol lo permite."
+                )
+            # Mismo email + rol: revincula google_uid (migración Firebase / nuevo UID).
+            # El token ya verificó ownership del email; no bloquear por UID viejo.
+            if user.google_uid and user.google_uid != identity.uid:
+                logger.warning(
+                    "google_sign_in_uid_relink email=%s old_uid=%s new_uid=%s",
+                    identity.email,
+                    user.google_uid,
+                    identity.uid,
                 )
             user.google_uid = identity.uid
             user.auth_provider = provider
