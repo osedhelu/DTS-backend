@@ -106,6 +106,7 @@ fi
 case "${SERVICE_MODE:-api}" in
   worker)
     echo "==> Iniciando Celery worker (SERVICE_MODE=worker)..."
+    export C_FORCE_ROOT="${C_FORCE_ROOT:-1}"
     exec uv run celery -A core worker \
       --loglevel="${CELERY_LOGLEVEL:-info}" \
       --concurrency "${CELERY_CONCURRENCY:-2}"
