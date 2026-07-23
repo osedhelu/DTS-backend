@@ -81,35 +81,6 @@ class TransitionOrderStatusUseCase:
                 AssignDriverUseCase,
             )
 
-            # #region agent log
-            try:
-                import json
-                import logging
-                import time
-                from pathlib import Path
-
-                logging.getLogger(__name__).info(
-                    "debug_sync_assign_after_ready order_id=%s",
-                    dto.order_id,
-                )
-                Path("/tmp/debug-7aed00.log").open("a").write(
-                    json.dumps(
-                        {
-                            "sessionId": "7aed00",
-                            "hypothesisId": "E",
-                            "location": "transition_order_status.py:sync_assign",
-                            "message": "sync assign after ready_for_pickup",
-                            "data": {"order_id": dto.order_id},
-                            "timestamp": int(time.time() * 1000),
-                            "runId": "post-fix",
-                        }
-                    )
-                    + "\n"
-                )
-            except Exception:
-                pass
-            # #endregion
-
             AssignDriverUseCase(order_repository=self._order_repository).execute(
                 dto.order_id
             )
