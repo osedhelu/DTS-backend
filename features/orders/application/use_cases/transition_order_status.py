@@ -67,7 +67,55 @@ class TransitionOrderStatusUseCase:
         else:
             OrderStateMachine.transition(order.status, dto.target_status)
 
-        return self._order_repository.update_status(dto.order_id, dto.target_status)
+        updated = self._order_repository.update_status(
+            dto.order_id, dto.target_status
+        )
+
+        # Delivery: al marcar listo, abrir búsqueda de conductor de forma
+        # síncrona (no depender solo de Celery; el worker puede no procesar).
+        if (
+            order.order_type == OrderType.DELIVERY
+            and dto.target_status == OrderStatus.READY_FOR_PICKUP
+        ):
+            from features.delivery.application.use_cases.assign_driver import (
+                AssignDriverUseCase,
+            )
+
+            # #region agent log
+            try:
+                import json
+                import logging
+                import time
+                from pathlib import Path
+
+                logging.getLogger(__name__).info(
+                    "debug_sync_assign_after_ready order_id=%s",
+                    dto.order_id,
+                )
+                Path("/tmp/debug-7aed00.log").open("a").write(
+                    json.dumps(
+                        {
+                            "sessionId": "7aed00",
+                            "hypothesisId": "E",
+                            "location": "transition_order_status.py:sync_assign",
+                            "message": "sync assign after ready_for_pickup",
+                            "data": {"order_id": dto.order_id},
+                            "timestamp": int(time.time() * 1000),
+                            "runId": "post-fix",
+                        }
+                    )
+                    + "\n"
+                )
+            except Exception:
+                pass
+            # #endregion
+
+            AssignDriverUseCase(order_repository=self._order_repository).execute(
+                dto.order_id
+            )
+            updated = self._order_repository.get_by_id(dto.order_id) or updated
+
+        return updated
 
     def _authorize_transition(self, order, dto: TransitionOrderStatusDTO) -> None:
         if dto.actor_role == UserRole.MERCHANT:

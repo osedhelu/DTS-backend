@@ -49,6 +49,40 @@ def enqueue_assign_driver_on_ready_for_pickup(
 
     from features.delivery.infrastructure.tasks import assign_driver_task
 
+    # #region agent log
+    try:
+        import json
+        import time
+        from pathlib import Path
+
+        _payload = {
+            "sessionId": "7aed00",
+            "hypothesisId": "E",
+            "location": "signals.py:enqueue_assign_driver",
+            "message": "enqueue assign_driver_task",
+            "data": {
+                "order_id": order_id,
+                "previous_status": previous_status,
+                "current_status": current_status,
+            },
+            "timestamp": int(time.time() * 1000),
+            "runId": "prod-diag",
+        }
+        Path("/tmp/debug-7aed00.log").open("a").write(
+            json.dumps(_payload, ensure_ascii=False) + "\n"
+        )
+        import logging
+
+        logging.getLogger(__name__).info(
+            "debug_enqueue_assign_driver order_id=%s prev=%s curr=%s",
+            order_id,
+            previous_status,
+            current_status,
+        )
+    except Exception:
+        pass
+    # #endregion
+
     assign_driver_task.delay(order_id)
 
 
