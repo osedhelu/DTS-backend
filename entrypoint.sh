@@ -107,6 +107,28 @@ case "${SERVICE_MODE:-api}" in
   worker)
     echo "==> Iniciando Celery worker (SERVICE_MODE=worker)..."
     export C_FORCE_ROOT="${C_FORCE_ROOT:-1}"
+    # Si Railway aún tiene healthcheck HTTP del railway.toml, responder 200 en $PORT
+    # para no marcar el deploy como FAILED (Celery no escucha HTTP).
+    if [[ -n "${PORT:-}" ]]; then
+      uv run python - <<'PY' &
+import os
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+port = int(os.environ.get("PORT", "8080"))
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):  # noqa: N802
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"ok")
+
+    def log_message(self, *_args):
+        return
+
+HTTPServer(("0.0.0.0", port), Handler).serve_forever()
+PY
+      echo "==> Healthcheck shim HTTP en :${PORT}"
+    fi
     exec uv run celery -A core worker \
       --loglevel="${CELERY_LOGLEVEL:-info}" \
       --concurrency "${CELERY_CONCURRENCY:-2}"
