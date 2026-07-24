@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, master]
+  pull_request:
+    branches: [main, develop, master]
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: pytest (PostGIS)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: test_dts
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d test_dts"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DJANGO_SETTINGS_MODULE: core.settings.test
+      CI: "true"
+      POSTGRES_DB: test_dts
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      GDAL_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/libgdal.so
+      GEOS_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/libgeos_c.so
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install GDAL/GEOS (PostGIS)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gdal-bin libgdal-dev libgeos-dev
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Verify GDAL bindings
+        run: uv run python -c "from django.contrib.gis.gdal import GDAL_VERSION; print('GDAL', GDAL_VERSION)"
+
+      - name: Realtime smoke (push, chat, tracking, WS Origin)
+        run: >
+          uv run pytest -v
+          features/orders/tests/infrastructure/test_order_signals.py
+          features/notifications/tests/
+          features/chat/tests/
+          features/delivery/tests/infrastructure/test_ws_origin.py
+          features/delivery/tests/application/test_get_order_tracking_destination.py
+          features/delivery/tests/domain/test_radius_and_work_zone.py
+
+      - name: Full suite
+        run: uv run pytest -v
