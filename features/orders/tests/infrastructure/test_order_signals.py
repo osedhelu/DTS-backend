@@ -288,7 +288,7 @@ def test_any_status_change_dispatches_push(mock_delay):
         mock_delay.reset_mock()
         order.status = OrderStatus.SEARCHING_DRIVER
         order.save(update_fields=["status", "updated_at"])
-        mock_delay.assert_not_called()
+        mock_delay.assert_called_once_with(order.id, OrderStatus.SEARCHING_DRIVER)
 
 
 @pytest.mark.skipif(
@@ -350,5 +350,58 @@ def test_signal_push_new_order_to_drivers(mock_dispatch, mock_assign):
         order.status = OrderStatus.SEARCHING_DRIVER
         order.save(update_fields=["status", "updated_at"])
 
-        mock_dispatch.assert_not_called()
+        mock_dispatch.assert_called_once_with(order.id, OrderStatus.SEARCHING_DRIVER)
         mock_assign.assert_not_called()
+
+
+@pytest.mark.skipif(
+    not _geos_available(),
+    reason="GDAL/GEOS requerido. Instala: brew install gdal geos && make docker-up",
+)
+@pytest.mark.django_db
+@patch("features.notifications.infrastructure.tasks.dispatch_order_push_task.delay")
+def test_manual_searching_driver_enqueues_driver_push(mock_delay):
+    """A2: path «Buscar conductor» (ready → searching) también notifica drivers."""
+    with override_settings(
+        DATABASES=POSTGIS_DATABASE,
+        INSTALLED_APPS=build_installed_apps(BACKEND_DIR),
+    ):
+        from features.orders.infrastructure.models import Order
+        from features.products.infrastructure.models import Product
+        from features.stores.infrastructure.models import Store
+
+        merchant = CustomUser.objects.create_user(
+            username="merchant_manual_search",
+            email="merchant_manual_search@test.com",
+            password="securepass123",
+            role=UserRole.MERCHANT,
+        )
+        customer = CustomUser.objects.create_user(
+            username="customer_manual_search",
+            email="customer_manual_search@test.com",
+            password="securepass123",
+            role=UserRole.CUSTOMER,
+        )
+        store = Store(owner=merchant, name="Manual Search Store", status=StoreStatus.OPEN)
+        store.set_location(GeoLocation(latitude=4.7110, longitude=-74.0721))
+        store.save()
+        product = Product.objects.create(
+            store=store,
+            name="Manual Search Product",
+            price=Decimal("10000.00"),
+            stock=10,
+            product_type=ProductType.PHYSICAL,
+        )
+        order = Order.objects.create(
+            customer=customer,
+            store=store,
+            status=OrderStatus.READY_FOR_PICKUP,
+            total=product.price,
+        )
+
+        order.status = OrderStatus.SEARCHING_DRIVER
+        order.save(update_fields=["status", "updated_at"])
+
+        mock_delay.assert_called_once_with(order.id, OrderStatus.SEARCHING_DRIVER)
+        assert mock_delay.call_args[0][0] == order.id
+        assert mock_delay.call_args[0][1] == OrderStatus.SEARCHING_DRIVER

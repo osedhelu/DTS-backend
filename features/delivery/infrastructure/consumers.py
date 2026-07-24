@@ -82,6 +82,7 @@ def record_driver_location_from_ws(
     from features.delivery.application.dto import RecordLocationDTO
     from features.delivery.application.use_cases.record_location import RecordLocationUseCase
     from features.delivery.infrastructure.repositories import DjangoDeliveryTrackingRepository
+    from features.orders.infrastructure.models import Order
     from features.orders.infrastructure.repositories import DjangoOrderRepository
 
     when = _parse_recorded_at(recorded_at)
@@ -98,6 +99,13 @@ def record_driver_location_from_ws(
         )
     )
     last = tracking.points[-1] if tracking.points else None
+
+    order = Order.objects.only(
+        "status",
+        "service_latitude",
+        "service_longitude",
+    ).get(pk=order_id)
+
     return {
         "type": "location",
         "order_id": order_id,
@@ -105,6 +113,9 @@ def record_driver_location_from_ws(
         "longitude": longitude,
         "recorded_at": (last.recorded_at if last else when).isoformat(),
         "sequence": last.sequence if last else None,
+        "order_status": order.status,
+        "destination_latitude": order.service_latitude,
+        "destination_longitude": order.service_longitude,
     }
 
 
@@ -209,4 +220,7 @@ class TrackingConsumer(AsyncJsonWebsocketConsumer):
         )
 
     async def tracking_location(self, event):
+        await self.send_json(event["payload"])
+
+    async def order_status(self, event):
         await self.send_json(event["payload"])

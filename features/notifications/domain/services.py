@@ -19,7 +19,10 @@ class OrderStatusNotificationMapper:
 
     @staticmethod
     def recipients_for_status(status: OrderStatus) -> frozenset[NotificationRecipient]:
-        if status == OrderStatus.READY_FOR_PICKUP:
+        if status in (
+            OrderStatus.READY_FOR_PICKUP,
+            OrderStatus.SEARCHING_DRIVER,
+        ):
             return frozenset({NotificationRecipient.ONLINE_DRIVERS})
 
         if status == OrderStatus.DRIVER_ASSIGNED:

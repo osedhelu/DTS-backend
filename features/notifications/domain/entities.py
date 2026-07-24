@@ -56,6 +56,11 @@ class PushTemplate:
                     title="Nuevo pedido",
                     body="Nuevo pedido listo para recoger",
                 ),
+                OrderStatus.SEARCHING_DRIVER: cls(
+                    notification_type=NotificationType.NEW_ORDER_READY_FOR_PICKUP,
+                    title="Nuevo pedido",
+                    body="Nuevo pedido listo para recoger",
+                ),
                 OrderStatus.DRIVER_ASSIGNED: cls(
                     notification_type=NotificationType.DRIVER_ASSIGNED,
                     title="Conductor asignado",

@@ -86,5 +86,46 @@ def enqueue_dispatch_order_push_on_status_change(
     if not OrderStatusNotificationMapper.supports_status(status):
         return
 
+    import logging
+
+    logging.getLogger(__name__).info(
+        "push_enqueued order_id=%s status=%s previous=%s",
+        order_id,
+        current_status,
+        previous_status,
+    )
     dispatch_order_push_task.delay(order_id, current_status)
+
+
+@receiver(order_status_changed)
+def broadcast_order_status_realtime(
+    sender,
+    order_id: int,
+    previous_status: str,
+    current_status: str,
+    **kwargs,
+) -> None:
+    """Fan-out de estado a rooms tracking/chat (sin endpoint HTTP nuevo)."""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+
+    payload = {
+        "type": "order.status",
+        "order_id": order_id,
+        "previous_status": previous_status,
+        "status": current_status,
+    }
+    channel_layer = get_channel_layer()
+    if channel_layer is None:
+        return
+
+    for group in (f"tracking_{order_id}", f"chat_{order_id}", f"order_status_{order_id}"):
+        try:
+            async_to_sync(channel_layer.group_send)(
+                group,
+                {"type": "order.status", "payload": payload},
+            )
+        except Exception:
+            # Room puede no existir; no bloquear la transición.
+            pass
 

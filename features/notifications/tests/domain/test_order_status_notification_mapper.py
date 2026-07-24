@@ -34,11 +34,18 @@ def test_mapper_driver_assigned_notifies_customer_and_driver():
     )
 
 
+def test_mapper_searching_driver_notifies_online_drivers():
+    recipients = OrderStatusNotificationMapper.recipients_for_status(
+        OrderStatus.SEARCHING_DRIVER
+    )
+    assert recipients == frozenset({NotificationRecipient.ONLINE_DRIVERS})
+    assert OrderStatusNotificationMapper.supports_status(OrderStatus.SEARCHING_DRIVER)
+
+
 @pytest.mark.parametrize(
     "status",
     [
         OrderStatus.CREATED,
-        OrderStatus.SEARCHING_DRIVER,
         OrderStatus.SCHEDULED,
     ],
 )

@@ -20,19 +20,16 @@ def chat_room_name(order_id: int) -> str:
 
 
 def _user_can_join(user, order_id: int) -> bool:
+    from features.chat.application.participants import user_is_chat_participant
     from features.orders.infrastructure.models import Order
 
     if not getattr(user, "is_authenticated", False):
         return False
     try:
-        order = Order.objects.only("id", "customer_id", "driver_id").get(pk=order_id)
+        order = Order.objects.select_related("store").get(pk=order_id)
     except Order.DoesNotExist:
         return False
-    if order.customer_id == user.id:
-        return True
-    if order.driver_id is not None and order.driver_id == user.id:
-        return True
-    return False
+    return user_is_chat_participant(order, user.id)
 
 
 def _send_message_sync(order_id: int, sender_id: int, body: str) -> dict[str, Any]:
@@ -68,13 +65,18 @@ class OrderChatConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(self.room, self.channel_name)
 
     async def receive_json(self, content, **kwargs):
+        # REST es source of truth; WS puede crear mensaje (web) sin duplicar fan-out
+        # porque SendOrderMessageUseCase ya hace group_send.
+        if content.get("type") == "echo":
+            await self.send_json({"type": "pong"})
+            return
         if content.get("type") != "message":
             await self.send_json({"type": "error", "detail": "Tipo no soportado"})
             return
 
         user = self.scope.get("user")
         try:
-            payload = await database_sync_to_async(_send_message_sync)(
+            await database_sync_to_async(_send_message_sync)(
                 self.order_id,
                 user.id,
                 content.get("body", ""),
@@ -87,11 +89,10 @@ class OrderChatConsumer(AsyncJsonWebsocketConsumer):
         ) as exc:
             await self.send_json({"type": "error", "detail": str(exc)})
             return
-
-        await self.channel_layer.group_send(
-            self.room,
-            {"type": "chat.message", "payload": payload},
-        )
+        # Broadcast ya lo hace el use case; no group_send otra vez.
 
     async def chat_message(self, event):
+        await self.send_json(event["payload"])
+
+    async def order_status(self, event):
         await self.send_json(event["payload"])

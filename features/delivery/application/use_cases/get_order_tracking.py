@@ -4,7 +4,17 @@ from features.delivery.domain.repositories import DeliveryTrackingRepository
 from features.delivery.domain.value_objects import TRACKABLE_ORDER_STATUSES
 from features.orders.domain.exceptions import OrderNotFoundError
 from features.orders.domain.repositories import OrderRepository
+from features.orders.domain.value_objects import OrderStatus
 from features.stores.domain.repositories import StoreRepository
+
+# Estados en los que el destino es la entrega al cliente (no fallback a tienda).
+_CUSTOMER_DESTINATION_STATUSES = frozenset(
+    {
+        OrderStatus.PICKED_UP,
+        OrderStatus.ON_THE_WAY,
+        OrderStatus.DELIVERED,
+    }
+)
 
 
 class GetOrderTrackingUseCase:
@@ -40,7 +50,10 @@ class GetOrderTrackingUseCase:
         if order.service_details and order.service_details.latitude is not None:
             dest_lat = order.service_details.latitude
             dest_lng = order.service_details.longitude
-        elif self._store_repository is not None:
+        elif (
+            self._store_repository is not None
+            and order.status not in _CUSTOMER_DESTINATION_STATUSES
+        ):
             store = self._store_repository.get_by_id(order.store_id)
             if store is not None:
                 dest_lat = store.latitude
