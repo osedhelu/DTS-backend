@@ -23,6 +23,40 @@ PAYMENT_SANDBOX_ENABLED = env.bool("PAYMENT_SANDBOX_ENABLED", default=True)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
+# Railway inyecta RAILWAY_PUBLIC_DOMAIN; sin esto DisallowedHost si ALLOWED_HOSTS quedó desactualizado.
+_railway_domain = env("RAILWAY_PUBLIC_DOMAIN", default="").strip()
+if _railway_domain and _railway_domain not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, _railway_domain]
+for _host in (
+    "healthcheck.railway.app",
+    ".up.railway.app",
+    "api.dtsdrop.com",
+    "dtsdrop.com",
+    "www.dtsdrop.com",
+):
+    if _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [*ALLOWED_HOSTS, _host]
+_extra_origins = [
+    f"https://{_railway_domain}" if _railway_domain else "",
+    "https://api.dtsdrop.com",
+    "https://dtsdrop.com",
+    "https://www.dtsdrop.com",
+]
+for _origin in _extra_origins:
+    if _origin and _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, _origin]
+
+# CORS — portal web en dominio propio llamando a la API (si no pasa solo por BFF).
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "https://dtsdrop.com",
+        "https://www.dtsdrop.com",
+    ],
+)
+CORS_ALLOW_CREDENTIALS = True
+
 INSTALLED_APPS = build_installed_apps(BASE_DIR)
 
 MIDDLEWARE = [

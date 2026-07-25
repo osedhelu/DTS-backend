@@ -31,7 +31,7 @@ Todos usan el **mismo Dockerfile** y Root Directory `/`.
 SECRET_KEY=<clave-larga-aleatoria>
 DEBUG=False
 
-ALLOWED_HOSTS=localhost,127.0.0.1,healthcheck.railway.app,${{RAILWAY_PUBLIC_DOMAIN}}
+ALLOWED_HOSTS=localhost,127.0.0.1,healthcheck.railway.app,${{RAILWAY_PUBLIC_DOMAIN}},.up.railway.app
 CSRF_TRUSTED_ORIGINS=https://${{RAILWAY_PUBLIC_DOMAIN}}
 
 DATABASE_URL=${{postgis.DATABASE_URL}}
