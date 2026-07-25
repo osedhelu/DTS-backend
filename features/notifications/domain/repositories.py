@@ -4,6 +4,8 @@ from typing import Protocol
 class DeviceTokenRepository(Protocol):
     def list_active_tokens_for_user(self, user_id: int) -> list[str]: ...
 
+    def deactivate_token(self, token: str) -> None: ...
+
 
 class PushNotificationClient(Protocol):
     def send(

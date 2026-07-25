@@ -62,3 +62,34 @@ def test_send_push_use_case_returns_empty_when_no_tokens():
 
     assert message_ids == []
     fcm_client.send.assert_not_called()
+
+
+def test_send_push_skips_stale_tokens_and_keeps_going():
+    from features.notifications.domain.exceptions import FCMSendError
+
+    fcm_client = MagicMock()
+    fcm_client.send.side_effect = [
+        FCMSendError("NotRegistered"),
+        "msg-ok",
+    ]
+    device_token_repository = MagicMock()
+    device_token_repository.list_active_tokens_for_user.return_value = [
+        "token-dead",
+        "token-live",
+    ]
+
+    use_case = SendPushUseCase(
+        device_token_repository=device_token_repository,
+        fcm_client=fcm_client,
+    )
+
+    message_ids = use_case.execute(
+        SendPushDTO(
+            user_id=10,
+            order_id=42,
+            order_status=OrderStatus.ACCEPTED_BY_MERCHANT,
+        )
+    )
+
+    assert message_ids == ["msg-ok"]
+    device_token_repository.deactivate_token.assert_called_once_with("token-dead")
