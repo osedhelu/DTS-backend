@@ -56,6 +56,22 @@ class FCMClient:
             ),
             token=payload.token,
             data=payload.data or {},
+            android=messaging.AndroidConfig(
+                priority="high",
+                notification=messaging.AndroidNotification(
+                    sound="default",
+                    channel_id=(
+                        "order_chat"
+                        if (payload.data or {}).get("type") == "chat_message"
+                        else "order_updates"
+                    ),
+                ),
+            ),
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(sound="default"),
+                ),
+            ),
         )
 
         try:

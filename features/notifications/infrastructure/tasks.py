@@ -213,7 +213,18 @@ def notify_chat_message_task(
     preview: str,
     sender_role: str = "",
 ) -> str:
-    return execute_chat_push(order_id, recipient_user_id, preview, sender_role)
+    from features.notifications.domain.exceptions import FCMSendError
+
+    try:
+        return execute_chat_push(order_id, recipient_user_id, preview, sender_role)
+    except FCMSendError as exc:
+        logger.exception(
+            "chat_push_failed order_id=%s recipient=%s err=%s",
+            order_id,
+            recipient_user_id,
+            exc,
+        )
+        raise self.retry(exc=exc, countdown=2 ** self.request.retries) from exc
 
 
 def _build_send_order_email_use_case() -> SendOrderEmailUseCase:
