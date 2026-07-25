@@ -10,3 +10,11 @@ class ChatMessageDTO:
     sender_role: str
     body: str
     created_at: datetime
+    message_type: str = "text"
+    image_url: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ListChatMessagesResult:
+    messages: list[ChatMessageDTO]
+    chat_closed: bool

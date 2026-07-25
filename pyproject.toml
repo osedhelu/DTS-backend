@@ -21,6 +21,7 @@ dependencies = [
     "pillow>=12.2.0",
     "boto3>=1.43.24",
     "daphne>=4.2.2",
+    "cloudinary>=1.45.0",
 ]
 
 [dependency-groups]

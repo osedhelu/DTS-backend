@@ -11,3 +11,7 @@ class UnauthorizedChatAccessError(DomainValidationError):
 
 class EmptyChatMessageError(DomainValidationError):
     pass
+
+
+class ChatClosedError(DomainValidationError):
+    pass

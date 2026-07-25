@@ -8,13 +8,16 @@ from rest_framework.views import APIView
 from core.media_urls import build_public_media_url
 from core.openapi import DetailErrorSerializer
 from features.accounts.infrastructure.permissions import IsDriver
+from features.delivery.application.use_cases.submit_proof_of_delivery import (
+    MissingDeliveryPhotoError,
+    SubmitProofOfDeliveryUseCase,
+)
 from features.delivery.infrastructure.models import ProofOfDelivery
-from features.orders.domain.value_objects import OrderStatus
-from features.orders.infrastructure.models import Order
+from features.orders.domain.exceptions import OrderNotFoundError
 
 
 class ProofOfDeliverySerializer(serializers.Serializer):
-    photo = serializers.ImageField(required=False, allow_null=True)
+    photo = serializers.ImageField(required=True)
     signature_data = serializers.CharField(required=False, allow_blank=True, default="")
     notes = serializers.CharField(required=False, allow_blank=True, default="")
 
@@ -30,27 +33,23 @@ class ProofOfDeliveryView(APIView):
     permission_classes = [IsDriver]
 
     def post(self, request, order_id: int):
-        order = Order.objects.filter(pk=order_id, driver_id=request.user.id).first()
-        if order is None:
-            return Response({"detail": "Pedido no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-
         serializer = ProofOfDeliverySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        proof, _ = ProofOfDelivery.objects.update_or_create(
-            order_id=order_id,
-            defaults={
-                "driver_id": request.user.id,
-                "photo": serializer.validated_data.get("photo"),
-                "signature_data": serializer.validated_data.get("signature_data", ""),
-                "notes": serializer.validated_data.get("notes", ""),
-            },
-        )
-        if order.status != OrderStatus.DELIVERED:
-            order.status = OrderStatus.DELIVERED
-            order.save(update_fields=["status", "updated_at"])
+        try:
+            result = SubmitProofOfDeliveryUseCase().execute(
+                order_id=order_id,
+                driver_id=request.user.id,
+                photo=serializer.validated_data.get("photo"),
+                signature_data=serializer.validated_data.get("signature_data", ""),
+                notes=serializer.validated_data.get("notes", ""),
+            )
+        except OrderNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except MissingDeliveryPhotoError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(self._serialize(proof), status=status.HTTP_201_CREATED)
+        return Response(result, status=status.HTTP_201_CREATED)
 
     def get(self, request, order_id: int):
         proof = ProofOfDelivery.objects.filter(

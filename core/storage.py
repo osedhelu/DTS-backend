@@ -139,6 +139,107 @@ class S3StorageBackend:
         return body if isinstance(body, bytes) else body.encode()
 
 
+class CloudinaryStorageBackend:
+    """Backend Cloudinary — activar con MEDIA_STORAGE_BACKEND=cloudinary."""
+
+    def __init__(
+        self,
+        *,
+        cloud_name: str,
+        api_key: str,
+        api_secret: str,
+        folder: str = "dts",
+        uploader: object | None = None,
+        api: object | None = None,
+    ) -> None:
+        if not cloud_name or not api_key or not api_secret:
+            raise ValueError(
+                "CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y "
+                "CLOUDINARY_API_SECRET son obligatorios"
+            )
+        self.cloud_name = cloud_name
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.folder = folder.strip().strip("/") or "dts"
+        self._uploader = uploader
+        self._api = api
+
+    def _public_id(self, name: str) -> str:
+        # Sin extensión: Cloudinary gestiona el resource type.
+        stem = name.rsplit(".", 1)[0] if "." in name else name
+        return f"{self.folder}/{stem}".replace("//", "/")
+
+    @property
+    def uploader(self):
+        if self._uploader is None:
+            import cloudinary
+            import cloudinary.uploader
+
+            cloudinary.config(
+                cloud_name=self.cloud_name,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+                secure=True,
+            )
+            self._uploader = cloudinary.uploader
+        return self._uploader
+
+    @property
+    def api(self):
+        if self._api is None:
+            import cloudinary
+            import cloudinary.api
+
+            cloudinary.config(
+                cloud_name=self.cloud_name,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+                secure=True,
+            )
+            self._api = cloudinary.api
+        return self._api
+
+    def save(self, name: str, content: object) -> str:
+        body = read_file_content(content)
+        result = self.uploader.upload(
+            BytesIO(body),
+            public_id=self._public_id(name),
+            overwrite=True,
+            resource_type="auto",
+        )
+        # Conservamos la clave relativa original para el ORM Django.
+        _ = result
+        return name
+
+    def delete(self, name: str) -> None:
+        try:
+            self.uploader.destroy(self._public_id(name), resource_type="image")
+        except Exception:
+            self.uploader.destroy(self._public_id(name), resource_type="raw")
+
+    def exists(self, name: str) -> bool:
+        try:
+            self.api.resource(self._public_id(name))
+            return True
+        except Exception:
+            return False
+
+    def url(self, name: str) -> str:
+        # URL de entrega HTTPS estándar.
+        public_id = self._public_id(name)
+        return (
+            f"https://res.cloudinary.com/{self.cloud_name}/image/upload/"
+            f"{public_id}"
+        )
+
+    def read(self, name: str) -> bytes:
+        import urllib.request
+
+        with urllib.request.urlopen(self.url(name)) as response:
+            data = response.read()
+        return data if isinstance(data, bytes) else bytes(data)
+
+
 def build_storage_backend(
     *,
     backend: str,
@@ -150,6 +251,12 @@ def build_storage_backend(
     aws_s3_region_name: str = "us-east-1",
     aws_s3_custom_domain: str = "",
     s3_client: object | None = None,
+    cloudinary_cloud_name: str = "",
+    cloudinary_api_key: str = "",
+    cloudinary_api_secret: str = "",
+    cloudinary_folder: str = "dts",
+    cloudinary_uploader: object | None = None,
+    cloudinary_api: object | None = None,
 ) -> StorageBackend:
     normalized = backend.lower().strip()
 
@@ -161,6 +268,16 @@ def build_storage_backend(
             secret_access_key=aws_secret_access_key,
             custom_domain=aws_s3_custom_domain,
             client=s3_client,
+        )
+
+    if normalized == "cloudinary":
+        return CloudinaryStorageBackend(
+            cloud_name=cloudinary_cloud_name,
+            api_key=cloudinary_api_key,
+            api_secret=cloudinary_api_secret,
+            folder=cloudinary_folder,
+            uploader=cloudinary_uploader,
+            api=cloudinary_api,
         )
 
     if normalized != "local":
@@ -181,6 +298,10 @@ def get_storage_backend() -> StorageBackend:
         aws_storage_bucket_name=getattr(settings, "AWS_STORAGE_BUCKET_NAME", ""),
         aws_s3_region_name=getattr(settings, "AWS_S3_REGION_NAME", "us-east-1"),
         aws_s3_custom_domain=getattr(settings, "AWS_S3_CUSTOM_DOMAIN", ""),
+        cloudinary_cloud_name=getattr(settings, "CLOUDINARY_CLOUD_NAME", ""),
+        cloudinary_api_key=getattr(settings, "CLOUDINARY_API_KEY", ""),
+        cloudinary_api_secret=getattr(settings, "CLOUDINARY_API_SECRET", ""),
+        cloudinary_folder=getattr(settings, "CLOUDINARY_FOLDER", "dts"),
     )
 
 

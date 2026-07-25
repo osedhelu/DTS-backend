@@ -409,6 +409,20 @@ wheels = [
 ]
 
 [[package]]
+name = "cloudinary"
+version = "1.45.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "six" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e2/5b/d17312bcebe524fc28a4b9032fc158737e991cde49cef7f86d18593c50c9/cloudinary-1.45.0.tar.gz", hash = "sha256:711404bfbdf87965afbefdb747ae78a03188b513846cccb0c1f8a8c612e375ba", size = 192094, upload-time = "2026-07-01T10:10:29.688Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/6d/5419a09c4ec2b7baf2723fbfc823bfbfea9ceeac177b30e01250ed23da2c/cloudinary-1.45.0-py3-none-any.whl", hash = "sha256:46c333101811841cf446c46054f4d9b507c2fa34c25152d1e922586c3b746196", size = 149030, upload-time = "2026-07-01T10:10:28.561Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -665,6 +679,7 @@ dependencies = [
     { name = "celery" },
     { name = "channels" },
     { name = "channels-redis" },
+    { name = "cloudinary" },
     { name = "daphne" },
     { name = "django" },
     { name = "django-cors-headers" },
@@ -696,6 +711,7 @@ requires-dist = [
     { name = "celery", specifier = ">=5.4" },
     { name = "channels", specifier = ">=4.1" },
     { name = "channels-redis", specifier = ">=4.2" },
+    { name = "cloudinary", specifier = ">=1.45.0" },
     { name = "daphne", specifier = ">=4.2.2" },
     { name = "django", specifier = ">=5.1" },
     { name = "django-cors-headers", specifier = ">=4.4" },

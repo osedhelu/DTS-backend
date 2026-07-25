@@ -85,7 +85,35 @@ def test_django_media_storage_uses_local_backend(tmp_path: Path):
 def test_build_storage_backend_rejects_unknown():
     with pytest.raises(ValueError, match="no soportado"):
         build_storage_backend(
-            backend="cloudinary",
+            backend="gcs",
             media_root="/tmp",
             media_url="/media/",
         )
+
+
+def test_cloudinary_storage_upload_mock():
+    mock_uploader = MagicMock()
+    mock_uploader.upload.return_value = {"public_id": "dts/stores/1/logo"}
+    mock_api = MagicMock()
+    backend = build_storage_backend(
+        backend="cloudinary",
+        media_root="/tmp",
+        media_url="/media/",
+        cloudinary_cloud_name="demo",
+        cloudinary_api_key="key",
+        cloudinary_api_secret="secret",
+        cloudinary_folder="dts",
+        cloudinary_uploader=mock_uploader,
+        cloudinary_api=mock_api,
+    )
+    content = SimpleUploadedFile("logo.png", b"logo-bytes", content_type="image/png")
+    saved = backend.save("stores/1/logo.png", content)
+    assert saved == "stores/1/logo.png"
+    mock_uploader.upload.assert_called_once()
+    assert backend.url(saved) == (
+        "https://res.cloudinary.com/demo/image/upload/dts/stores/1/logo"
+    )
+    mock_api.resource.return_value = {"public_id": "dts/stores/1/logo"}
+    assert backend.exists(saved) is True
+    backend.delete(saved)
+    mock_uploader.destroy.assert_called()

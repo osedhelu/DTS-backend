@@ -8,6 +8,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from features.chat.domain.exceptions import (
+    ChatClosedError,
     DomainValidationError,
     EmptyChatMessageError,
     UnauthorizedChatAccessError,
@@ -33,18 +34,13 @@ def _user_can_join(user, order_id: int) -> bool:
 
 
 def _send_message_sync(order_id: int, sender_id: int, body: str) -> dict[str, Any]:
-    from features.chat.application.use_cases.send_order_message import SendOrderMessageUseCase
+    from features.chat.application.use_cases.send_order_message import (
+        SendOrderMessageUseCase,
+        message_to_ws_payload,
+    )
 
     msg = SendOrderMessageUseCase().execute(order_id, sender_id, body)
-    return {
-        "type": "message",
-        "id": msg.id,
-        "order_id": msg.order_id,
-        "sender_id": msg.sender_id,
-        "sender_role": msg.sender_role,
-        "body": msg.body,
-        "created_at": msg.created_at.isoformat(),
-    }
+    return message_to_ws_payload(msg)
 
 
 class OrderChatConsumer(AsyncJsonWebsocketConsumer):
@@ -84,6 +80,7 @@ class OrderChatConsumer(AsyncJsonWebsocketConsumer):
         except (
             OrderNotFoundError,
             UnauthorizedChatAccessError,
+            ChatClosedError,
             EmptyChatMessageError,
             DomainValidationError,
         ) as exc:

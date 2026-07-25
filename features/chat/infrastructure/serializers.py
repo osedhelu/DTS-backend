@@ -6,8 +6,15 @@ class ChatMessageSerializer(serializers.Serializer):
     order_id = serializers.IntegerField()
     sender_id = serializers.IntegerField()
     sender_role = serializers.CharField()
-    body = serializers.CharField()
+    body = serializers.CharField(allow_blank=True)
+    message_type = serializers.CharField()
+    image_url = serializers.CharField(allow_blank=True)
     created_at = serializers.DateTimeField()
+
+
+class ChatMessagesListSerializer(serializers.Serializer):
+    chat_closed = serializers.BooleanField()
+    messages = ChatMessageSerializer(many=True)
 
 
 class SendChatMessageSerializer(serializers.Serializer):

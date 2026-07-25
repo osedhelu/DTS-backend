@@ -2,8 +2,25 @@
 
 from __future__ import annotations
 
-from features.chat.domain.exceptions import UnauthorizedChatAccessError
+from features.chat.domain.exceptions import (
+    ChatClosedError,
+    UnauthorizedChatAccessError,
+)
+from features.orders.domain.value_objects import OrderStatus
 from features.orders.infrastructure.models import Order as OrderModel
+
+_CLOSED_STATUSES = frozenset({OrderStatus.DELIVERED, OrderStatus.CANCELLED})
+
+
+def is_chat_closed(order: OrderModel) -> bool:
+    return order.status in _CLOSED_STATUSES
+
+
+def assert_chat_open(order: OrderModel) -> None:
+    if is_chat_closed(order):
+        raise ChatClosedError(
+            "El chat de este pedido está cerrado (pedido entregado o cancelado)"
+        )
 
 
 def user_is_chat_participant(order: OrderModel, user_id: int) -> bool:
