@@ -1,5 +1,8 @@
+import io
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -16,6 +19,12 @@ from features.stores.infrastructure.models import Store
 def _auth(api_client, user):
     token = RefreshToken.for_user(user)
     api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+
+
+def _jpeg_upload(name: str = "pod.jpg") -> SimpleUploadedFile:
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), color=(255, 0, 0)).save(buf, format="JPEG")
+    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/jpeg")
 
 
 def _seed_chat_order(**status_kw):
@@ -165,7 +174,7 @@ def test_chat_closed_after_delivered_rejects_post(api_client):
 @pytest.mark.django_db
 def test_proof_of_delivery_posts_image_message_and_closes_chat(api_client):
     _, customer, driver, order = _seed_chat_order()
-    photo = SimpleUploadedFile("pod.jpg", b"fake-jpeg-bytes", content_type="image/jpeg")
+    photo = _jpeg_upload()
 
     _auth(api_client, driver)
     pod = api_client.post(
