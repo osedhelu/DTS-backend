@@ -46,7 +46,7 @@ async def test_denies_websocket_with_disallowed_origin(settings, monkeypatch):
     settings.ALLOWED_HOSTS = ["dts-backend-production-c84e.up.railway.app"]
     # Sin channel layer: WebsocketDenier no se queda esperando Redis forever.
     monkeypatch.setattr(
-        "channels.generic.websocket.get_channel_layer",
+        "channels.consumer.get_channel_layer",
         lambda *args, **kwargs: None,
     )
     inner = AsyncMock(return_value="ok")
