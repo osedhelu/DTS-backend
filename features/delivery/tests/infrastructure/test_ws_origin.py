@@ -44,22 +44,28 @@ async def test_allows_websocket_with_allowed_origin(settings):
 @pytest.mark.asyncio
 async def test_denies_websocket_with_disallowed_origin(settings, monkeypatch):
     settings.ALLOWED_HOSTS = ["dts-backend-production-c84e.up.railway.app"]
-    # Sin channel layer: WebsocketDenier no se queda esperando Redis forever.
+
+    class ImmediateDenier:
+        """Sustituye WebsocketDenier para no colgarse en Redis/ASGI."""
+
+        async def __call__(self, scope, receive, send):
+            await send({"type": "websocket.close", "code": 1000})
+
     monkeypatch.setattr(
-        "channels.consumer.get_channel_layer",
-        lambda *args, **kwargs: None,
+        "channels.security.websocket.WebsocketDenier",
+        ImmediateDenier,
     )
+
     inner = AsyncMock(return_value="ok")
     validator = NativeClientOriginValidator(inner)
 
     send = AsyncMock()
-    receive = AsyncMock(side_effect=[{"type": "websocket.connect"}])
     scope = {
         "type": "websocket",
         "headers": [(b"origin", b"https://evil.example.com")],
     }
-    await validator(scope, receive, send)
+    await validator(scope, AsyncMock(), send)
 
     inner.assert_not_awaited()
-    # WebsocketDenier cierra la conexión tras el handshake
-    assert send.await_count >= 1
+    send.assert_awaited()
+    assert send.await_args.args[0]["type"] == "websocket.close"
