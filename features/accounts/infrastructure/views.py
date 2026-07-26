@@ -170,7 +170,9 @@ class MerchantRegisterView(APIView):
         except DomainValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        send_merchant_verification_email.delay(result.user_id, result.verification_token)
+        # Envío síncrono (igual que password reset): en local/Docker con Mailpit
+        # suele no haber worker Celery, y .delay() deja el correo encolado sin entregar.
+        send_merchant_verification_email(result.user_id, result.verification_token)
 
         response_serializer = MerchantRegisterResponseSerializer(
             {
@@ -233,7 +235,7 @@ class ResendVerificationView(APIView):
 
         if result is not None:
             user, token = result
-            send_merchant_verification_email.delay(user.id, token)
+            send_merchant_verification_email(user.id, token)
 
         return Response(
             {"detail": "Si el email está registrado, recibirás un nuevo enlace de verificación"},

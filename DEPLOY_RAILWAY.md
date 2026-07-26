@@ -251,7 +251,7 @@ Esperado: `beat: Starting...`
 
 1. Worker y beat en **SUCCESS**
 2. Registro en web-admin: `/registro-comercio`
-3. El email debe aparecer en **Mailpit** (procesado por el worker)
+3. El email de verificación debe aparecer en **Mailpit** (lo envía la API al registrar; no depende del worker)
 4. Al cambiar estado de un pedido, el worker ejecuta asignación/notificaciones
 
 ---
@@ -284,7 +284,7 @@ curl -I https://dts-backend-production-c84e.up.railway.app/api/v1/docs/
 | Worker CRASHED / healthcheck | Config file debe ser `railway.worker.toml` (sin healthcheck HTTP) |
 | `Could not find the GDAL library` | Builder = Dockerfile, no Railpack |
 | `DisallowedHost` / healthcheck API | Añadir `healthcheck.railway.app` a `ALLOWED_HOSTS` |
-| Emails no llegan | Worker corriendo + `REDIS_URL` + Mailpit SMTP |
+| Emails no llegan | Verificación/reset van síncronos desde la API: `EMAIL_*` en **DTS-backend** → Mailpit. Otros emails (pedido) sí necesitan worker + mismas vars `EMAIL_*` |
 | Beat duplicado | Solo 1 réplica de `DTS-celery-beat` |
 | Migrate conflictos | `RUN_MIGRATIONS=false` en worker y beat |
 | Links email a localhost | `WEB_URL` en DTS-backend apuntando al web-admin |
