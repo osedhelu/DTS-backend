@@ -15,6 +15,7 @@ def test_notification_types():
         "order_on_the_way",
         "order_delivered",
         "order_cancelled",
+        "chat_message",
     }
     assert {member.value for member in NotificationType} == expected
     assert NotificationType.ORDER_ON_THE_WAY == "order_on_the_way"

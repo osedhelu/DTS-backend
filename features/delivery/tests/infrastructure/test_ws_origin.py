@@ -48,12 +48,13 @@ async def test_denies_websocket_with_disallowed_origin(settings):
     validator = NativeClientOriginValidator(inner)
 
     send = AsyncMock()
+    receive = AsyncMock(return_value={"type": "websocket.connect"})
     scope = {
         "type": "websocket",
         "headers": [(b"origin", b"https://evil.example.com")],
     }
-    await validator(scope, AsyncMock(), send)
+    await validator(scope, receive, send)
 
     inner.assert_not_awaited()
-    # WebsocketDenier cierra la conexión
+    # WebsocketDenier cierra la conexión tras el handshake
     assert send.await_count >= 1

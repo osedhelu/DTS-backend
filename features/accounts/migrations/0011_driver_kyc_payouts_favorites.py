@@ -4,6 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         ("accounts", "0010_customer_profile_addresses"),
+        ("stores", "0001_initial"),
     ]
 
     operations = [
