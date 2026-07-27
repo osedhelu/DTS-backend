@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -69,15 +70,16 @@ def test_admin_commissions_list_returns_store_sales_and_driver_commissions():
             role=UserRole.DRIVER.value,
         )
         store = create_test_store(merchant_user)
+        report_day = date.today()
 
         DailySalesReport.objects.create(
-            report_date="2026-06-01",
+            report_date=report_day,
             store=store,
             order_count=3,
             gross_revenue="200000.00",
         )
         DriverCommission.objects.create(
-            report_date="2026-06-01",
+            report_date=report_day,
             driver=driver_user,
             delivery_count=2,
             commission_amount="5000.00",
@@ -160,15 +162,16 @@ def test_admin_commissions_export_returns_csv():
             role=UserRole.DRIVER.value,
         )
         store = create_test_store(merchant_user)
+        report_day = date.today()
 
         DailySalesReport.objects.create(
-            report_date="2026-06-01",
+            report_date=report_day,
             store=store,
             order_count=1,
             gross_revenue="100000.00",
         )
         DriverCommission.objects.create(
-            report_date="2026-06-01",
+            report_date=report_day,
             driver=driver_user,
             delivery_count=1,
             commission_amount="2500.00",

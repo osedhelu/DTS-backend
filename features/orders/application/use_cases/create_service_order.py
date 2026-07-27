@@ -135,12 +135,12 @@ class CreateServiceOrderUseCase:
             discount_value=model.discount_value,
             min_order_total=model.min_order_total,
             max_uses=model.max_uses,
-            uses_count=model.uses_count,
+            used_count=model.used_count,
             valid_from=model.valid_from,
             valid_until=model.valid_until,
             is_active=model.is_active,
         )
         try:
-            return CouponDiscountCalculator.calculate(coupon, order_total)
+            return CouponDiscountCalculator.calculate(order_total, coupon)
         except CouponNotApplicableError as exc:
             raise DomainValidationError(str(exc)) from exc

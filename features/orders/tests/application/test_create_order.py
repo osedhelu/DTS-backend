@@ -1,5 +1,5 @@
 from decimal import Decimal
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -103,17 +103,25 @@ def test_create_order_with_delivery_details():
     order_repository.create.return_value = Order(id=100, customer_id=5, store_id=1)
 
     use_case = CreateOrderUseCase(order_repository, product_repository, store_repository)
-    use_case.execute(
-        CreateOrderDTO(
-            customer_id=5,
-            store_id=1,
-            items=(OrderLineDTO(product_id=1, quantity=1),),
-            delivery_address="Calle 50 # 10-20",
-            customer_notes="Tocar timbre",
-            latitude=4.65,
-            longitude=-74.08,
+    with patch(
+        "features.orders.application.use_cases.create_order.build_public_store_detail",
+        return_value={
+            "accepts_orders": True,
+            "is_open": True,
+            "in_delivery_zone": True,
+        },
+    ):
+        use_case.execute(
+            CreateOrderDTO(
+                customer_id=5,
+                store_id=1,
+                items=(OrderLineDTO(product_id=1, quantity=1),),
+                delivery_address="Calle 50 # 10-20",
+                customer_notes="Tocar timbre",
+                latitude=4.65,
+                longitude=-74.08,
+            )
         )
-    )
 
     payload = order_repository.create.call_args[0][0]
     assert payload["service_address"] == "Calle 50 # 10-20"

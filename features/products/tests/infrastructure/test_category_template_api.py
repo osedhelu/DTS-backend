@@ -46,7 +46,7 @@ def test_list_category_templates_marks_imported():
 
         assert response.status_code == status.HTTP_200_OK
         payload = response.json()
-        assert payload["vertical"] == "food"
+        assert payload["vertical"] == "FOOD"
         names = {item["name"]: item for item in payload["templates"]}
         assert "Restaurante" in names
         assert names["Restaurante"]["already_imported"] is True

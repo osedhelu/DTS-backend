@@ -25,12 +25,13 @@ class AcceptOfferUseCase:
             except OrderModel.DoesNotExist as exc:
                 raise OrderNotFoundError(f"Pedido {order_id} no encontrado") from exc
 
+            if model.driver_id is not None:
+                raise OfferAlreadyTakenError("Otro conductor ya aceptó este pedido")
+
             if model.status != OrderStatus.SEARCHING_DRIVER:
                 raise OfferNotAcceptableError(
                     f"El pedido en estado '{model.status}' no admite aceptación"
                 )
-            if model.driver_id is not None:
-                raise OfferAlreadyTakenError("Otro conductor ya aceptó este pedido")
 
             OrderStateMachine.transition(
                 OrderStatus.SEARCHING_DRIVER, OrderStatus.DRIVER_ASSIGNED

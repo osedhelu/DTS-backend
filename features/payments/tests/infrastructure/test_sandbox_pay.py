@@ -109,7 +109,7 @@ def test_sandbox_pay_marks_order_paid(api_client):
         )
         assert pay_response.status_code == status.HTTP_200_OK
         assert pay_response.data["payment_status"] == "paid"
-        assert pay_response.data["total_paid"] == "25000.00"
+        assert pay_response.data["total_paid"] == Decimal("25000.00")
         assert pay_response.data["payment_method_label"] == "Sandbox DTS"
         assert "platform_commission" in pay_response.data
         assert "merchant_net" in pay_response.data
